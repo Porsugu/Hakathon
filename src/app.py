@@ -1,21 +1,21 @@
-# filepath: streamlit-welcome-app/src/app.py
-
 import streamlit as st
-from components.buttons import create_button
 
-st.set_page_config(page_title="Welcome App", page_icon="👋", layout="centered")
+# setting icon
+st.set_page_config(page_title="Welcome", page_icon="👋", layout="centered")
 
-#topic and introduction
-st.title("Welcome to the AI tutorial!")
-st.subheader("This teacher will better than your colledge one.")
+st.title("👋 AI tutorial")
+st.subheader("Better than your college one.")
 
-st.write("""
-This is a simple Streamlit app that demonstrates how to create a welcome page with a button.    
-Click the button below to get started!!!
-""")
+st.write(
+    """
+    welcome to my website. This is a simple welcome page created with Streamlit.
+    """
+)
 
-if create_button("Get Started"):
-    st.write("Let's get started with the tutorial!")
+# add button
+if st.button("start exploring"):
+    st.success("button is clicked")
 
 st.divider()
-st.write("Here is something")
+
+st.info("info")
