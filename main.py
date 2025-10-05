@@ -93,6 +93,18 @@ st.markdown("""
         header[data-testid="stHeader"] {
             box-shadow: none !important;
         }
+
+        /* Vertically align content in columns */
+        [data-testid="stHorizontalBlock"] {
+            align-items: center;
+        }
+
+        /* CSS for truncating long plan titles */
+        .card-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         
     </style>
 """, unsafe_allow_html=True)
@@ -129,63 +141,55 @@ if not my_plans:
     st.info("You don't have any learning plans yet. Click the button above to create one!")
     # --- END OF IMPROVEMENT ---
 else:
-    # --- Pagination Logic ---
-    PLANS_PER_PAGE = 2
+    # --- Pagination Logic for single plan view ---
     if 'plan_page_index' not in st.session_state:
         st.session_state.plan_page_index = 0
 
     total_plans = len(my_plans)
-    total_pages = math.ceil(total_plans / PLANS_PER_PAGE)
-
     # Ensure index is valid if plans are deleted
-    if st.session_state.plan_page_index >= total_pages:
-        st.session_state.plan_page_index = max(0, total_pages - 1)
+    if st.session_state.plan_page_index >= total_plans:
+        st.session_state.plan_page_index = max(0, total_plans - 1)
 
-    current_page = st.session_state.plan_page_index
+    current_index = st.session_state.plan_page_index
+    plan = my_plans[current_index]
 
-    # --- Navigation Controls ---
-    nav_cols = st.columns([1, 10, 1])
-    with nav_cols[0]:
-        if st.button("⬅️", use_container_width=True, disabled=(current_page == 0)):
+    # --- Display Single Plan Card with Side Navigation ---
+    left_nav_col, card_col, right_nav_col = st.columns([1, 8, 1])
+
+    with left_nav_col:
+        if st.button("◀", key="left_arrow", use_container_width=True, disabled=(current_index == 0)):
             st.session_state.plan_page_index -= 1
             st.rerun()
-    with nav_cols[2]:
-        if st.button("➡️", use_container_width=True, disabled=(current_page >= total_pages - 1)):
-            st.session_state.plan_page_index += 1
-            st.rerun()
 
-    # --- Display Sliced Plans ---
-    start_index = current_page * PLANS_PER_PAGE
-    end_index = start_index + PLANS_PER_PAGE
-    plans_to_display = my_plans[start_index:end_index]
-
-    for plan in plans_to_display:
-        with st.container(border=True):
-                st.subheader(plan['plan_name'])
-                
-                # Calculate and display progress from the JSON content
+    with card_col:
+        with st.container(border=True, height=300):
+                # Use markdown to apply custom class and title attribute for hover effect
+                st.markdown(f'<h2 class="card-title" title="{plan["plan_name"]}">{plan["plan_name"]}</h2>', unsafe_allow_html=True)
                 try:
                     content = json.loads(plan['daily_content'])
                     total_days = len(content)
                     completed_days = sum(1 for day in content if day.get('status') == 'completed')
                     progress = completed_days / total_days if total_days > 0 else 0
-                    
                     st.progress(progress, text=f"{completed_days} / {total_days} Days Completed")
                 except (json.JSONDecodeError, TypeError):
                     st.warning("Could not display progress.")
                 
                 st.caption(f"Created: {plan['created_at'].split(' ')[0]}")
 
-                # Place buttons on separate rows for a cleaner look
-                if st.button("View Plan", key=f"view_{plan['pid']}", use_container_width=True):
-                    # Step 1: Set the session state and query params. This will trigger a rerun.
-                    st.session_state['current_plan_id'] = plan['pid']
-                    st.session_state['plan_to_view'] = True
-                    st.query_params["pid"] = plan['pid']
-                    # On the next run, the logic at the top of the script will handle the page switch.
-                    st.rerun()
-                
-                if st.button("Delete", key=f"delete_{plan['pid']}", use_container_width=True, type="secondary"):
-                    delete_plan(uid, plan['pid'])
-                    st.toast(f"Plan '{plan['plan_name']}' deleted successfully!")
-                    st.rerun()
+                view_col, delete_col = st.columns(2)
+                with view_col:
+                    if st.button("View", key=f"view_{plan['pid']}", use_container_width=True):
+                        st.session_state['current_plan_id'] = plan['pid']
+                        st.session_state['plan_to_view'] = True
+                        st.query_params["pid"] = plan['pid']
+                        st.rerun()
+                with delete_col:
+                    if st.button("Delete", key=f"delete_{plan['pid']}", use_container_width=True, type="secondary"):
+                        delete_plan(uid, plan['pid'])
+                        st.toast(f"Plan '{plan['plan_name']}' deleted successfully!")
+                        st.rerun()
+    
+    with right_nav_col:
+        if st.button("▶", key="right_arrow", use_container_width=True, disabled=(current_index >= total_plans - 1)):
+            st.session_state.plan_page_index += 1
+            st.rerun()
