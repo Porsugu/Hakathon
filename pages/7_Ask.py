@@ -335,3 +335,4 @@ with col2:
                     st.markdown(answer_text)
                     st.session_state.ask_messages.append({"role": "assistant", "content": answer_text})
                     st.session_state.blackboard_item = None # Clear blackboard
+                    st.session_state.blackboard_item = None # Clear blackboard
