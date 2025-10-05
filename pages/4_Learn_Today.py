@@ -3,6 +3,8 @@ from db_functions import get_plans_by_user, update_plan_content
 import google.generativeai as genai
 import json
 
+
+
 st.set_page_config(page_title="Learn Today", layout="wide")
 
 # --- Check for selected plan ---
