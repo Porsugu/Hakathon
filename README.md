@@ -54,14 +54,14 @@ Click for Demo : https://porsugu-hakathon-main-uq04zd.streamlit.app/
 3. **Knowledge Tracking** – Store and organize key knowledge points in a personal database.  
 <figure>
   <p align="center">
-    <img src="(image-6.png)" alt="Flash card Topic" style="width:70%;">
+    <img src="image-6.png" alt="Flash card Topic" style="width:70%;">
   </p>
   <figcaption align="center">Dashboard — personalized learning plans overview</figcaption>
 </figure>
 
 <figure>
   <p align="center">
-    <img src="(image-7.png)" alt="Flash card Topic" style="width:70%;">
+    <img src="image-7.png" alt="Flash card Topic" style="width:70%;">
   </p>
   <figcaption align="center">Dashboard — personalized learning plans overview</figcaption>
 </figure>
@@ -69,14 +69,14 @@ Click for Demo : https://porsugu-hakathon-main-uq04zd.streamlit.app/
 4. **Practice Generation & Feedback** – AI creates **short-answer & multiple-choice** questions, then explains why your answers are right or wrong.  
 <figure>
   <p align="center">
-    <img src="(image-8.png)" alt="Flash card Topic Question 1 with answer explained" style="width:70%;">
+    <img src="image-8.png" alt="Flash card Topic Question 1 with answer explained" style="width:70%;">
   </p>
   <figcaption align="center">Dashboard — personalized learning plans overview</figcaption>
 </figure>
 
 <figure>
   <p align="center">
-    <img src="(image-9.png)" alt="Flash card Topic Question 2 with answer explained" style="width:70%;">
+    <img src="image-9.png" alt="Flash card Topic Question 2 with answer explained" style="width:70%;">
   </p>
   <figcaption align="center">Dashboard — personalized learning plans overview</figcaption>
 </figure>
@@ -84,7 +84,7 @@ Click for Demo : https://porsugu-hakathon-main-uq04zd.streamlit.app/
 5. **On-Demand Knowledge Expansion** – Instantly add extra knowledge related to your plan, update your database, and refine your study needs anytime.
 <figure>
   <p align="center">
-    <img src="(image-10.png)" alt="Specific demand instruction, you can ask for the customised settings of the projects" style="width:70%;">
+    <img src="image-10.png" alt="Specific demand instruction, you can ask for the customised settings of the projects" style="width:70%;">
   </p>
   <figcaption align="center">Dashboard — personalized learning plans overview</figcaption>
 </figure>
