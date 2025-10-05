@@ -110,6 +110,11 @@ if st.button("Add New Plan"):
 st.divider()
 # --- END OF ADDITION ---
 
+# --- Logic to handle page switching after a plan is selected ---
+# This ensures the URL is updated *before* we switch pages.
+if st.session_state.get("plan_to_view"):
+    st.switch_page("pages/2_Plan_Details.py")
+
 my_plans = get_plans_by_user(uid)
 
 if not my_plans:
@@ -139,6 +144,11 @@ else:
                 st.caption(f"Created: {plan['created_at'].split(' ')[0]}")
 
                 # Add a button to navigate to the plan details page
+                # This is the safest way to navigate while setting a URL parameter.
                 if st.button("View Plan", key=f"view_{plan['pid']}", use_container_width=True):
+                    # Step 1: Set the session state and query params. This will trigger a rerun.
                     st.session_state['current_plan_id'] = plan['pid']
-                    st.switch_page("pages/2_Plan_Details.py")
+                    st.session_state['plan_to_view'] = True
+                    st.query_params["pid"] = plan['pid']
+                    # On the next run, the logic at the top of the script will handle the page switch.
+                    st.rerun()
