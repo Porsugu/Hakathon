@@ -1,5 +1,6 @@
 import streamlit as st
 from db_functions import get_plans_by_user
+from utils import ensure_plan_selected
 import json
 
 st.markdown("""
@@ -106,12 +107,7 @@ def card(title, icon):
     return clicked
 
 # --- Check for selected plan and display header ---
-if 'current_plan_id' not in st.session_state:
-    st.error("No plan selected. Please go back to the homepage and select a plan.")
-    st.page_link("main.py", label="Go to Homepage", icon="🏠")
-    st.stop()
-
-pid = st.session_state['current_plan_id']
+pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1) # Default to 1 if not found
 
 # Fetch all plans and find the current one by pid
@@ -128,20 +124,29 @@ st.caption("Select an option below to manage your learning plan.")
 st.divider()
 
 # --- Display the four action cards ---
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     if card("Adjust Plan", "🛠️"):
+        st.query_params["pid"] = pid
         st.switch_page("pages/3_Adjust_Plan.py")
 
 with col2:
     if card("Learn Today", "📖"):
+        st.query_params["pid"] = pid
         st.switch_page("pages/4_Learn_Today.py")
 
 with col3:
     if card("Review", "🧠"):
-        st.info("This feature is coming soon!")
+        st.query_params["pid"] = pid
+        st.switch_page("pages/5_Review.py")
 
 with col4:
+    if card("Exercise", "✍️"):
+        st.query_params["pid"] = pid
+        st.switch_page("pages/6_Exercise.py")
+
+with col5:
     if card("Ask Something", "❓"):
-        st.info("This feature is coming soon!")
+        st.query_params["pid"] = pid
+        st.switch_page("pages/7_Ask.py")
