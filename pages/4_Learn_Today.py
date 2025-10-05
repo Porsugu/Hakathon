@@ -109,32 +109,42 @@ with col1:
         if current_day_task['day'] in st.session_state.learning_materials_cache[pid]:
             learning_material = st.session_state.learning_materials_cache[pid][current_day_task['day']]
         else:
-            with st.spinner("🤖 Breaking down today's topic into key concepts..."):
+            with st.spinner("🤖 Generating today's lesson..."):
                 prompt = f"""
-                Please act as a helpful tutor. Your task is to break down a learning topic into key, saveable knowledge points.
+                Please act as a helpful and patient tutor. Your task is to generate comprehensive learning material for a complete beginner.
+                Break the topic down into its most fundamental, atomic concepts. Each concept should be explained clearly and concisely, as if you are creating study notes.
+
                 The topic is: "{current_day_task['topic']}"
                 The specific learning goals are: "{current_day_task['details']}"
                 
                 Your response MUST be a single valid JSON object.
-                This object must have one key: "knowledge_points".
-                The value of "knowledge_points" must be an array of objects.
-                Each object in the array represents a single, distinct piece of knowledge and must have three keys:
-                1. "term": A concise string for the concept, term, or rule.
-                2. "definition": A clear, easy-to-understand explanation of the term.
-                3. "example": A short, practical code or usage example for the term.
+                This object must have one key: "learning_material".
+                The value of "learning_material" must be an array of content blocks. Each block is an object with a "type" and "content".
                 
-                Example response format:
+                Here are the available types and their "content" structure:
+                1. "type": "paragraph"
+                   "content": "A string of explanatory text. Use markdown for formatting."
+                2. "type": "key_concept"
+                   "content": {{"term": "The specific term or concept", "definition": "A precise, clear definition.", "example": "A short, practical example."}}
+                3. "type": "theorem"
+                   "content": {{"name": "Name of the Theorem/Rule", "statement": "The full statement.", "example": "A clear, practical example."}}
+                4. "type": "latex_equation"
+                   "content": {{"title": "Name of the equation", "equation": "a^2 + b^2 = c^2", "explanation": "A brief explanation of what the equation represents."}}
+                5. "type": "table"
+                   "content": {{"title": "Title for the table", "headers": ["Header1", "Header2"], "rows": [["r1c1", "r1c2"], ["r2c1", "r2c2"]]}}. The 'headers' array MUST contain unique strings.
+                6. "type": "code_example"
+                   "content": {{"title": "Purpose of the code snippet", "language": "e.g., python", "code": "Your code here.", "explanation": "A brief explanation of what the code does."}}
+                
+                Generate a sequence of these blocks to create a complete and easy-to-understand lesson. Use the "key_concept" type for all fundamental definitions.
+                Do not avoid defining a term as a "key_concept" just because it is also part of a table or another block type. If a term is important for a beginner to know, it must have its own "key_concept" definition.
+                Ensure all concepts and theorems have good examples.
+                
+                Example JSON structure:
                 {{
-                  "knowledge_points": [
-                    {{
-                      "term": "Python Variable",
-                      "definition": "A symbolic name that is a reference or pointer to an object. Once an object is assigned to a variable, you can refer to the object by that name."
-                    }},
-                    {{
-                      "term": "Python String",
-                      "definition": "A sequence of characters enclosed in single, double, or triple quotes. Strings are immutable.",
-                      "example": "name = 'Alice'\\nprint(f'Hello, {{name}}')"
-                    }}
+                  "learning_material": [
+                    {{"type": "paragraph", "content": "Let's start with the basics of the Pythagorean theorem."}},
+                    {{"type": "theorem", "content": {{"name": "Pythagorean Theorem", "statement": "In a right-angled triangle, the square of the hypotenuse is equal to the sum of the squares of the other two sides.", "example": "If side a=3 and side b=4, then c^2 = 3^2 + 4^2 = 9 + 16 = 25, so c=5."}}}},
+                    {{"type": "latex_equation", "content": "a^2 + b^2 = c^2"}}
                   ]
                 }}
                 """
@@ -146,19 +156,88 @@ with col1:
                 # Force a rerun to re-evaluate the 'is_generating' flag and enable the buttons.
                 st.rerun()
 
-        for i, item in enumerate(learning_material.get("knowledge_points", [])):
-            with st.container(border=True):
-                st.subheader(item['term'])
-                st.write(item['definition'])
-                if item.get('example'):
-                    st.code(item['example'], language='python')
-                if st.button("Save to Knowledge Base", key=f"save_{i}"):
-                    # Combine definition and example for saving
-                    full_definition = item['definition']
-                    if item.get('example'):
-                        full_definition += f"\n\n**Example:**\n```\n{item['example']}\n```"
-                    add_knowledge_item(uid, pid, 'concept', item['term'], full_definition)
-                    st.toast(f"✅ Saved '{item['term']}'!")
+        for i, block in enumerate(learning_material.get("learning_material", [])):
+            block_type = block.get("type")
+            content = block.get("content")
+
+            if block_type == "paragraph":
+                st.markdown(content)
+            
+            elif block_type == "key_concept" and isinstance(content, dict):
+                with st.container(border=True):
+                    st.subheader(content.get("term", "Key Concept"))
+                    st.write(content.get("definition"))
+                    if content.get("example"):
+                        st.markdown(f"**Example:** {content.get('example')}")
+                    if st.button("Save to Knowledge Base", key=f"save_concept_{i}"):
+                        full_definition = f"{content.get('definition')}\n\n**Example:** {content.get('example')}"
+                        add_knowledge_item(uid, pid, 'concept', content.get("term"), full_definition)
+                        st.toast(f"✅ Saved '{content.get('term')}'!")
+
+            elif block_type == "theorem" and isinstance(content, dict):
+                with st.container(border=True):
+                    st.subheader(content.get("name", "Theorem/Rule"))
+                    st.write(content.get("statement"))
+                    if content.get("example"):
+                        st.markdown(f"**Example:** {content.get('example')}")
+                    if st.button("Save to Knowledge Base", key=f"save_theorem_{i}"):
+                        full_definition = f"{content.get('statement')}\n\n**Example:** {content.get('example')}"
+                        add_knowledge_item(uid, pid, 'theorem', content.get("name"), full_definition)
+                        st.toast(f"✅ Saved '{content.get('name')}'!")
+
+            elif block_type == "latex_equation":
+                with st.container(border=True):
+                    equation_title = content.get("title", "Equation")
+                    st.subheader(equation_title)
+                    st.latex(content.get("equation", ""))
+                    if content.get("explanation"):
+                        st.write(content.get("explanation"))
+                    if st.button("Save to Knowledge Base", key=f"save_equation_{i}"):
+                        # Format the equation and explanation for saving
+                        full_definition = f"```latex\n{content.get('equation', '')}\n```\n\n**Explanation:**\n{content.get('explanation', 'No explanation provided.')}"
+                        add_knowledge_item(uid, pid, 'equation', equation_title, full_definition)
+                        st.toast(f"✅ Saved '{equation_title}'!")
+
+            elif block_type == "table" and isinstance(content, dict):
+                import pandas as pd
+                with st.container(border=True):
+                    table_title = content.get("title", "Data Table")
+                    st.subheader(table_title)
+                    headers = content.get("headers", [])
+                    # Defensively handle duplicate headers from the AI
+                    unique_headers = []
+                    for h in headers:
+                        if h not in unique_headers:
+                            unique_headers.append(h)
+                    
+                    # Ensure all rows have the same number of columns as the headers
+                    num_columns = len(unique_headers)
+                    sanitized_rows = [row[:num_columns] for row in content.get("rows", [])]
+                    df = pd.DataFrame(sanitized_rows, columns=unique_headers)
+                    st.table(df)
+                    if st.button("Save to Knowledge Base", key=f"save_table_{i}"):
+                        # Manually create a markdown table to avoid the 'tabulate' dependency.
+                        headers_str = "| " + " | ".join(df.columns) + " |"
+                        separator_str = "| " + " | ".join(["---"] * len(df.columns)) + " |"
+                        rows_str = "\n".join(["| " + " | ".join(map(str, row)) + " |" for row in df.itertuples(index=False)])
+                        markdown_table = f"{headers_str}\n{separator_str}\n{rows_str}"
+                        add_knowledge_item(uid, pid, 'table', table_title, markdown_table)
+                        st.toast(f"✅ Saved '{table_title}'!")
+
+            elif block_type == "code_example" and isinstance(content, dict):
+                with st.container(border=True):
+                    code_title = content.get("title", "Code Example")
+                    st.subheader(code_title)
+                    st.code(content.get("code", ""), language=content.get("language", "plaintext"))
+                    if content.get("explanation"):
+                        st.write(content.get("explanation"))
+                    if st.button("Save to Knowledge Base", key=f"save_code_{i}"):
+                        # Format the code and explanation for saving
+                        full_definition = f"```\n{content.get('code', '')}\n```\n\n**Explanation:**\n{content.get('explanation', 'No explanation provided.')}"
+                        add_knowledge_item(uid, pid, 'code', code_title, full_definition)
+                        st.toast(f"✅ Saved '{code_title}'!")
+
+            st.write("") # Adds a little vertical space
 
 # --- Right Column: Chat Interface ---
 with col2:
@@ -183,8 +262,24 @@ with col2:
         with st.chat_message("assistant"):
             with st.spinner("🤖 Thinking..."):
                 # Construct a context-aware prompt
-                # We'll format the knowledge points as context for the chat bot
-                context_list = [f"- {item['term']}: {item['definition']}\n  Example: {item.get('example', 'N/A')}" for item in learning_material.get("knowledge_points", [])]
+                # Create a simple text representation of the complex learning material for context
+                context_list = []
+                for block in learning_material.get("learning_material", []):
+                    if block.get("type") == "paragraph":
+                        context_list.append(block.get("content"))
+                    elif block.get("type") == "key_concept":
+                        c = block.get("content", {})
+                        context_list.append(f"Concept '{c.get('term')}': {c.get('definition')}")
+                    elif block.get("type") == "theorem":
+                        c = block.get("content", {})
+                        context_list.append(f"Rule '{c.get('name')}': {c.get('statement')}")
+                    elif block.get("type") == "latex_equation":
+                        c = block.get("content", {})
+                        context_list.append(f"Equation '{c.get('title')}': {c.get('explanation')}")
+                    elif block.get("type") == "code_example":
+                        c = block.get("content", {})
+                        context_list.append(f"Code '{c.get('title')}': {c.get('explanation')}")
+
                 context = "\n".join(context_list)
 
                 full_prompt = f"""
