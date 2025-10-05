@@ -174,7 +174,7 @@ css_styles += """
 
 st.markdown(css_styles, unsafe_allow_html=True)
 
-st.title("🚀 Your Learning OS")
+st.title("Your Learning OS")
 st.sidebar.success("Select a page above to get started.")
 
 # --- User Authentication Placeholder ---
