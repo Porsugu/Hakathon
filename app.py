@@ -2,10 +2,32 @@ import os, json, base64, hashlib, secrets, requests
 import streamlit as st
 import platform, subprocess, webbrowser
 from urllib.parse import urlencode
-from db_functions import upsert_user
+from db_functions import upsert_google_user, migrate_users_table_for_google
+from db_functions import get_db_connection, DATABASE_FILE
+import os
+
+# with get_db_connection() as conn:
+#     print("=== DEBUG DB ===")
+#     print("DATABASE_FILE (from db_functions):", os.path.abspath(DATABASE_FILE))
+#     print("sqlite_version:", conn.execute("select sqlite_version()").fetchone()[0])
+#     print("database_list:", conn.execute("PRAGMA database_list").fetchall())
+#     print("table_info(users):", conn.execute("PRAGMA table_info(users)").fetchall())
+#     print("index_list(users):", conn.execute("PRAGMA index_list(users)").fetchall())
+#     try:
+#         print("index_info(idx_users_google_sub):", conn.execute("PRAGMA index_info('idx_users_google_sub')").fetchall())
+#     except Exception as e:
+#         print("index_info error:", e)
+#     print("================")
+
+
 
 # ================== 基本設定 ==================
 st.set_page_config(page_title="Welcome", page_icon="👋", layout="centered")
+ss = st.session_state
+migrate_users_table_for_google()
+
+
+
 
 # 打開除錯模式時，會「停用」自動跳轉與 st.stop()，讓你看得到 DEBUG
 DEBUG_OAUTH = False   # ◎ 除錯時 True；完成後改成 False
@@ -93,6 +115,34 @@ query = st.query_params
 code = query.get("code")
 state = query.get("state")
 
+def on_google_signin_success(info: dict):
+    try:
+        uid = upsert_google_user(info)
+    except Exception as e:
+        st.error(f"Database error in writing user: {e}")
+        st.stop()
+
+    ss["uid"] = uid
+    ss["user_info"] = info
+    ss.user = {
+        "id": f"google:{info.get('sub')}",
+        "sub": info.get("sub"),
+        "email": info.get("email"),
+        "name": info.get("name"),
+        "picture": info.get("picture"),
+    }
+    ss.oauth_state = None
+    ss.code_verifier = None
+    st.success("✅ Login success, user stored in session_state.")
+    if not DEBUG_OAUTH:
+        clear_query_params()
+        try:
+            st.switch_page("main.py")
+        except Exception:
+            st.query_params["view"] = "main"
+            st.rerun()
+
+
 if code and state:
     st.info("DEBUG: Received code/state from Google.")
 
@@ -157,38 +207,39 @@ if code and state:
                     pass
 
             if info and info.get("sub"):
-                # 1. first upsert the google yser to DB, getting uid (=Google sub)
-                try:
-                    uid = upsert_user(info)
-                except Exception as e:
-                    st.error(f"Database error in writting user: {e}")
-                    st.stop()
+                on_google_signin_success(info)
+                # # 1. first upsert the google yser to DB, getting uid (=Google sub)
+                # try:
+                #     uid = upsert_google_user(info)
+                # except Exception as e:
+                #     st.error(f"Database error in writting user: {e}")
+                #     st.stop()
                 
-                # 2. setting session : let all the pages could use uid to check the info
-                ss["uid"] = uid
-                ss["user_info"] = info
-                ss.user = {
-                    "id": f"google:{info.get('sub')}",
-                    "sub": info.get("sub"),
-                    "email": info.get("email"),
-                    "name": info.get("name"),
-                    "picture": info.get("picture"),
-                }
-                # 清掉一次性資料 & 查詢參數
-                ss.oauth_state = None
-                ss.code_verifier = None
-                if not DEBUG_OAUTH:
-                    clear_query_params()
-                st.success("✅ Login success, user stored in session_state.")
+                # # 2. setting session : let all the pages could use uid to check the info
+                # ss["uid"] = uid
+                # ss["user_info"] = info
+                # ss.user = {
+                #     "id": f"google:{info.get('sub')}",
+                #     "sub": info.get("sub"),
+                #     "email": info.get("email"),
+                #     "name": info.get("name"),
+                #     "picture": info.get("picture"),
+                # }
+                # # 清掉一次性資料 & 查詢參數
+                # ss.oauth_state = None
+                # ss.code_verifier = None
+                # if not DEBUG_OAUTH:
+                #     clear_query_params()
+                # st.success("✅ Login success, user stored in session_state.")
 
-                # 登入後導頁（DEBUG 時不跳轉）
-                if not DEBUG_OAUTH:
-                    try:
-                        st.switch_page("main.py")
-                    except Exception:
-                        st.query_params["view"] = "main"
-                        # st.markdown("<script>window.location.reload()</script>", unsafe_allow_html=True)
-                        st.rerun()
+                # # 登入後導頁（DEBUG 時不跳轉）
+                # if not DEBUG_OAUTH:
+                #     try:
+                #         st.switch_page("main.py")
+                #     except Exception:
+                #         st.query_params["view"] = "main"
+                #         # st.markdown("<script>window.location.reload()</script>", unsafe_allow_html=True)
+                #         st.rerun()
             else:
                 st.error("取得使用者資訊失敗（access_token 或 id_token 無效）。")
         else:

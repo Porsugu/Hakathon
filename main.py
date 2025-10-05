@@ -102,9 +102,9 @@ st.sidebar.success("Select a page above to get started.")
 
 # adding from the log in page - by Joyce
 uid = st.session_state.get("uid")
-if not uid:
-    st.info("You are not logged in. Please go to the Login page.")
-    st.stop()
+# if not uid:
+#     st.info("You are not logged in. Please go to the Login page.")
+#     st.stop()
 
 # --- User Authentication Placeholder ---
 if 'user_id' not in st.session_state:

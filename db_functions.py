@@ -1,7 +1,11 @@
 # File Name: db_functions.py
-import sqlite3
+import os, sqlite3
+from datetime import datetime
 
-DATABASE_FILE = 'learning_os.db'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_FILE = os.path.join(BASE_DIR, "learning_os.db")
+
+# DATABASE_FILE = 'learning_os.db'
 
 def get_db_connection():
     """
@@ -123,3 +127,72 @@ def delete_knowledge_item(item_id):
     with get_db_connection() as conn:
         conn.execute(sql, (item_id,))
         conn.commit()
+
+def migrate_users_table_for_google():
+    """建立/補齊 users 表欄位 + google_sub 唯一索引（只走 Google 登入）"""
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        # 建表（若不存在）
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            uid INTEGER PRIMARY KEY AUTOINCREMENT,
+            google_sub TEXT,         -- Google 的唯一 id
+            email      TEXT,
+            name       TEXT,
+            picture    TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT
+        )
+        """)
+        # 補欄位（如果之前就有表）
+        cur.execute("PRAGMA table_info(users)")
+        cols = {r["name"] for r in cur.fetchall()}
+        for col, typ in [("google_sub","TEXT"),("email","TEXT"),("name","TEXT"),("picture","TEXT"),("updated_at","TEXT")]:
+            if col not in cols:
+                cur.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+
+        # ✅ 一定要有唯一索引，未來也能改回 ON CONFLICT 寫法
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub
+            ON users(google_sub)
+        """)
+        conn.commit()
+
+def upsert_google_user(info: dict):
+    """
+    只用 Google 登入：
+      - 若 google_sub 已存在：更新 email/name/picture + updated_at，回傳 uid
+      - 若不存在：插入新用戶，回傳新 uid
+    👉 用「先 UPDATE，沒有再 INSERT」策略，避免你遇到的 ON CONFLICT 版本/索引問題
+    """
+    sub     = info.get("sub")
+    email   = info.get("email")
+    name    = info.get("name")
+    picture = info.get("picture")
+    if not sub:
+        raise ValueError("userinfo 缺少 'sub'")
+
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        # 1) 先嘗試更新既有用戶
+        cur.execute("""
+            UPDATE users
+               SET email   = COALESCE(?, email),
+                   name    = COALESCE(?, name),
+                   picture = COALESCE(?, picture),
+                   updated_at = ?
+             WHERE google_sub = ?
+        """, (email, name, picture, now, sub))
+
+        # 2) 若沒更新到任何列 → 插入新用戶
+        if cur.rowcount == 0:
+            cur.execute("""
+                INSERT INTO users (google_sub, email, name, picture, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (sub, email, name, picture, now, now))
+
+        conn.commit()
+        row = conn.execute("SELECT uid FROM users WHERE google_sub = ?", (sub,)).fetchone()
+        return row["uid"] if row else None
