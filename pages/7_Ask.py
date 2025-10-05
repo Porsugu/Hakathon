@@ -203,8 +203,6 @@ with col1:
             elif item_type in ['concept', 'theorem']:
                 # These are also markdown strings
                 st.markdown(definition_text)
-            else: # concept, theorem, table, etc.
-                st.markdown(definition_text)
             
             if st.button("Add to Knowledge Base", use_container_width=True):
                 # The definition is already formatted correctly when placed on the blackboard
@@ -308,120 +306,6 @@ with col2:
                     data = ai_response_data.get("data", {})
 
                     if is_knowledge and "term" in data and "definition" in data and "item_type" in data:
-                        # It's a knowledge point, display on blackboard
-                        st.session_state.blackboard_item = data
-                        # Add a message to the chat to direct the user
-                        chat_message = f"I've put the details for **{data.get('term')}** on the blackboard for you. You can save it to your knowledge base from there!"
-                        st.markdown(chat_message)
-                        st.session_state.ask_messages.append({"role": "assistant", "content": chat_message})
-                        st.rerun()
-                        
-                    else:
-                        # It's a conversational answer
-                        chat_message = data.get("answer", "I'm not sure how to respond to that, please try asking differently.")
-                        st.markdown(chat_message)
-                        st.session_state.ask_messages.append({"role": "assistant", "content": chat_message})
-                        if st.session_state.blackboard_item:
-                            st.session_state.blackboard_item = None # Clear blackboard
-                            st.rerun()
-
-                except (json.JSONDecodeError, TypeError):
-                    # If JSON parsing fails, treat it as a simple conversational response
-                    st.markdown(answer_text)
-                    st.session_state.ask_messages.append({"role": "assistant", "content": answer_text})
-                    st.session_state.blackboard_item = None # Clear blackboard
-                    st.markdown(definition_text) # Fallback
-            else: # concept, theorem, table, etc.
-                st.markdown(definition_text)
-            
-            if st.button("Add to Knowledge Base", use_container_width=True):
-                # The definition is already formatted correctly when placed on the blackboard
-                # The 'item_type' is also preserved
-                add_knowledge_item(uid, pid, item_type, item['term'], definition_text)
-                st.toast(f"✅ Saved '{item['term']}'!")
-                st.session_state.blackboard_item = None # Clear after saving
-        else:
-            st.write("Important concepts you ask about will appear here...")
-
-# --- Right Column: Chat Interface ---
-with col2:
-    st.header("Chat")
-
-    # Display chat messages
-    for message in st.session_state.ask_messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # User input
-    if prompt := st.chat_input(f"Ask a question about {plan_name}..."):
-        st.session_state.ask_messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("🤖 Thinking..."):
-                def format_knowledge_for_ai(items):
-                    """Formats knowledge items into a readable string for the AI context."""
-                    formatted_items = []
-                    for item in items:
-                        term = item['term']
-                        definition = item['definition']
-                        item_type = item['item_type']
-                        if item_type == 'equation':
-                            match = re.search(r"```latex\n(.*?)\n```\n\n\*\*Explanation:\*\*\n(.*)", definition, re.DOTALL)
-                            if match:
-                                definition = f"Equation: {match.group(1).strip()}. Explanation: {match.group(2).strip()}"
-                        elif item_type == 'code':
-                            definition = re.sub(r"```.*?\n", "", definition).replace("```", "")
-                        formatted_items.append(f"- {term}: {definition}")
-                    return "\n".join(formatted_items)
-                # Build context from saved knowledge
-                knowledge_context = format_knowledge_for_ai(knowledge_items)
-                
-                special_instructions = current_plan['special_instructions'] if current_plan and 'special_instructions' in current_plan.keys() else None
-                instruction_prompt_part = ""
-                if special_instructions:
-                    instruction_prompt_part = f"""Please also consider the user's general instructions for this plan:
-                    ---
-                    {special_instructions}
-                    ---
-                    """
-
-                # Construct a detailed prompt for the AI
-                full_prompt = f"""
-                You are a helpful tutor for a student learning about '{plan_name}'.
-                The user's question is: "{prompt}"
-
-                First, decide if the question is related to '{plan_name}'.
-                - If it is NOT related, respond with a conversational message explaining you can only answer questions about the topic.
-
-                - If it IS related, decide if the answer is a distinct, important "knowledge point" (like a vocabulary word, a function, a grammar rule, a specific formula).
-                    - If it IS a knowledge point, you MUST respond with ONLY a single JSON object with this structure:
-                      `{{"is_knowledge_point": true, "data": {{"term": "...", "definition": "...", "example": "..."}}}}`
-                
-                - If the question is related but requires a general explanation or a conversational answer (not a dictionary-style entry), you MUST respond with ONLY a single JSON object with this structure:
-                  `{{"is_knowledge_point": false, "data": {{"answer": "Your conversational answer here."}}}}`
-
-                {instruction_prompt_part}
-
-                Here is some context of what the user has already saved:
-                ---
-                {knowledge_context}
-                ---
-                """
-
-                response = model.generate_content(full_prompt)
-                answer_text = response.text
-
-                try:
-                    # Attempt to parse the AI's response as JSON
-                    cleaned_response = answer_text.strip().replace("```json", "").replace("```", "")
-                    ai_response_data = json.loads(cleaned_response)
-
-                    is_knowledge = ai_response_data.get("is_knowledge_point", False)
-                    data = ai_response_data.get("data", {})
-
-                    if is_knowledge:
                         # It's a knowledge point, display on blackboard
                         st.session_state.blackboard_item = data
                         # Add a message to the chat to direct the user
