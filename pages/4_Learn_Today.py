@@ -3,7 +3,90 @@ from db_functions import get_plans_by_user, update_plan_content
 import google.generativeai as genai
 import json
 
+st.markdown("""
+    <style> 
+        /* General dark background and text */
+        .stApp {
+            background-color: #0e1117;
+            color: #f5f5f5;
+        }
+        h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #f5f5f5 !important;
+        }
 
+        /* Top bar */
+        header[data-testid="stHeader"] {
+            background-color: #0e1117 !important;
+            color: #f5f5f5 !important;
+            box-shadow: none !important;
+        }
+        header[data-testid="stHeader"] .css-1v0mbdj {
+            color: #f5f5f5 !important;
+        }
+
+        /* Sidebar */
+        section[data-testid="stSidebar"] {
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+        section[data-testid="stSidebar"] .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+        section[data-testid="stSidebar"] .stAlert p {
+            color: #f5f5f5 !important;
+        }
+
+        /* Buttons */
+        div.stButton > button {
+            background-color: #0078ff;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            padding: 0.6em 1em;
+            font-weight: 600;
+            transition: 0.2s ease-in-out;
+        }
+        div.stButton > button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        /* Info / Error / Success Boxes */
+        .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            color: #f5f5f5 !important;
+            box-shadow: none !important;
+        }
+
+        /* Expanders (Days) */
+        details {
+            background-color: #1a1d23 !important;
+            border: 1px solid #2e3440 !important;
+            border-radius: 8px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Progress bars */
+        [data-testid="stProgress"] > div > div {
+            background-color: #0078ff !important;
+        }
+
+        /* Chat input box */
+        div[data-testid="stChatInput"] textarea {
+            color: #f5f5f5 !important;
+        }
+
+        /* Chat messages */
+        div[data-testid="stChatMessage"] {
+            background-color: #1a1d23 !important;
+            border-radius: 12px !important;
+            padding: 1em !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 st.set_page_config(page_title="Learn Today", layout="wide")
 

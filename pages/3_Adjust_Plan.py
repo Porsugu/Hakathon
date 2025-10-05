@@ -5,7 +5,17 @@ import json
 
 st.markdown("""
     <style>
-        /* General background and text */
+        /* Keep expanded expander header and content dark */
+        details[open] > summary {
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+        details[open] {
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+            
+        /* General dark background and text */
         .stApp {
             background-color: #0e1117;
             color: #f5f5f5;
@@ -14,10 +24,28 @@ st.markdown("""
             color: #f5f5f5 !important;
         }
 
-        /* Sidebar styling */
+        /* Top bar */
+        header[data-testid="stHeader"] {
+            background-color: #0e1117 !important;
+            color: #f5f5f5 !important;
+            box-shadow: none !important;
+        }
+        header[data-testid="stHeader"] .css-1v0mbdj {
+            color: #f5f5f5 !important;
+        }
+
+        /* Sidebar */
         section[data-testid="stSidebar"] {
-            background-color: #1a1d23;
-            color: #f5f5f5;
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+        section[data-testid="stSidebar"] .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+        section[data-testid="stSidebar"] .stAlert p {
+            color: #f5f5f5 !important;
         }
 
         /* Buttons */
@@ -35,60 +63,38 @@ st.markdown("""
             transform: scale(1.05);
         }
 
-        /* Info boxes */
+        /* Info / Error / Success Boxes */
         .stAlert {
-            background-color: #1f2937 !important;
-            color: #e5e7eb !important;
-            border: none;
+            border: none !important;
+            background-color: transparent !important;
+            color: #f5f5f5 !important;
+            box-shadow: none !important;
         }
 
-        /* Progress bar */
+        /* Expanders (Days) */
+        details {
+            background-color: #1a1d23 !important;
+            border: 1px solid #2e3440 !important;
+            border-radius: 8px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Progress bars */
         [data-testid="stProgress"] > div > div {
             background-color: #0078ff !important;
         }
 
-        /* Containers */
-        div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] {
-            background-color: #1a1d23;
-            border: 1px solid #2e3440;
-            border-radius: 12px;
-            padding: 1em;
-            margin-bottom: 1em;
-        }
-            
-        section[data-testid="stSidebar"] .stAlert {
-            border: none !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-        }
-
-        section[data-testid="stSidebar"] .stAlert p {
-            color: #f5f5f5 !important;
-        }
-        
-        div.stAlert {
-            border: none !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-        }
-
-        div.stAlert p {
-            color: #f5f5f5 !important;
-        }
-            
-        header[data-testid="stHeader"] {
-            background-color: #0e1117 !important; 
-            color: #f5f5f5 !important;           
-        }
-
-        header[data-testid="stHeader"] .css-1v0mbdj {
+        /* Chat input box */
+        div[data-testid="stChatInput"] textarea {
             color: #f5f5f5 !important;
         }
 
-        header[data-testid="stHeader"] {
-            box-shadow: none !important;
+        /* Chat messages */
+        div[data-testid="stChatMessage"] {
+            background-color: #1a1d23 !important;
+            border-radius: 12px !important;
+            padding: 1em !important;
         }
-        
     </style>
 """, unsafe_allow_html=True)
 
