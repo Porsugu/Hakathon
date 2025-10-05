@@ -175,7 +175,7 @@ if not my_plans:
     # --- IMPROVED THIS SECTION ---
     st.info("You don't have any learning plans yet. Click the button above to create one!")
     # --- END OF IMPROVEMENT ---
-else:
+elif my_plans: # Add an explicit check to ensure my_plans is not empty
     # --- Pagination Logic for single plan view ---
     if 'plan_page_index' not in st.session_state:
         st.session_state.plan_page_index = 0
