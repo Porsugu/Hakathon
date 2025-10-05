@@ -2,6 +2,7 @@ import os, json, base64, hashlib, secrets, requests
 import streamlit as st
 import platform, subprocess, webbrowser
 from urllib.parse import urlencode
+from db_functions import upsert_user
 
 # ================== 基本設定 ==================
 st.set_page_config(page_title="Welcome", page_icon="👋", layout="centered")
@@ -62,11 +63,11 @@ else:
 
 # --- Fallback Router ---
 if ss.get("user") and not DEBUG_OAUTH:
-    if st.query_params.get("view") == "dashboard":
+    if st.query_params.get("view") == "main":
         try:
-            st.switch_page("pages/dashbox.py")
+            st.switch_page("main.py")
         except Exception:
-            st.write("Routing to dashboard…")
+            st.write("Routing to Main page")
             st.stop()
 
 def clear_query_params():
@@ -156,6 +157,16 @@ if code and state:
                     pass
 
             if info and info.get("sub"):
+                # 1. first upsert the google yser to DB, getting uid (=Google sub)
+                try:
+                    uid = upsert_user(info)
+                except Exception as e:
+                    st.error(f"Database error in writting user: {e}")
+                    st.stop()
+                
+                # 2. setting session : let all the pages could use uid to check the info
+                ss["uid"] = uid
+                ss["user_info"] = info
                 ss.user = {
                     "id": f"google:{info.get('sub')}",
                     "sub": info.get("sub"),
@@ -173,9 +184,9 @@ if code and state:
                 # 登入後導頁（DEBUG 時不跳轉）
                 if not DEBUG_OAUTH:
                     try:
-                        st.switch_page("pages/dashbox.py")
+                        st.switch_page("main.py")
                     except Exception:
-                        st.query_params["view"] = "dashboard"
+                        st.query_params["view"] = "main"
                         # st.markdown("<script>window.location.reload()</script>", unsafe_allow_html=True)
                         st.rerun()
             else:
