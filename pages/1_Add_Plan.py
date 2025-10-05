@@ -3,6 +3,8 @@ from db_functions import add_plan
 import google.generativeai as genai
 import json
 import os
+from config import config
+from config import get_ai_manager
 
 st.markdown("""
     <style>
@@ -96,21 +98,17 @@ st.markdown("""
 # Set up the page
 st.set_page_config(page_title="Add Learning Plan", layout="wide")
 
-# --- AI Configuration ---
-# WARNING: Hardcoding keys is not secure. Use st.secrets for production.
-genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
+# --- AI Manager ---
+ai_manager = get_ai_manager()
+if not ai_manager.initialize():
+    st.error("AI could not be initialized. Check your secrets or environment variables.")
+    st.stop()
 
 
 def generate_learning_plan_json(target, time_in_days):
     """
     Generates a structured learning plan in JSON format using an AI model.
     """
-    # Switched to 'gemini-pro' as it's a stable and widely available model,
-    # which resolves the "404 not found" error for 'gemini-1.5-flash'.
-    # Using 'gemini-1.0-pro' as a more specific and stable model identifier
-    # to resolve the 404 error for 'gemini-pro'.
-    model = genai.GenerativeModel('gemini-2.5-flash')
-
     prompt = f"""
     Create a daily learning plan for a user who wants to learn '{target}' in {time_in_days} days.
     Your response must be a valid JSON array.
@@ -132,9 +130,10 @@ def generate_learning_plan_json(target, time_in_days):
       }}
     ]
     """
-    response = model.generate_content(prompt)
-    # Clean up the response to ensure it's just the JSON
-    cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+    response = ai_manager.generate_content(prompt)
+    if not response:
+        raise Exception("AI returned no content")
+    cleaned_response = response.replace("```json", "").replace("```", "").strip()
     return cleaned_response
 
 

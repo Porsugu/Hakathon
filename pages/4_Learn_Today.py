@@ -2,6 +2,8 @@ import streamlit as st
 from db_functions import get_plans_by_user, add_knowledge_item, update_plan_content
 import google.generativeai as genai
 import json
+from config import config
+from config import get_ai_manager
 
 st.set_page_config(page_title="Learn Today", layout="wide")
 
@@ -15,11 +17,9 @@ pid = st.session_state['current_plan_id']
 uid = st.session_state.get('user_id', 1)
 
 # --- AI Configuration ---
-try:
-    genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
-    model = genai.GenerativeModel('gemini-2.5-flash')
-except Exception as e:
-    st.error(f"AI Model could not be configured: {e}")
+ai_manager = get_ai_manager()
+if not ai_manager.initialize():
+    st.error("AI could not be initialized. Check your secrets or environment variables.")
     st.stop()
 
 # --- Fetch plan and find today's task ---
@@ -140,9 +140,13 @@ with col1:
                   ]
                 }}
                 """
-                response = model.generate_content(prompt)
-                cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
-                learning_material = json.loads(cleaned_response)
+                response = ai_manager.generate_content(prompt)
+                if not response:
+                    st.error("AI returned no content for learning material.")
+                    learning_material = {"knowledge_points": []}
+                else:
+                    cleaned_response = response.replace("```json", "").replace("```", "").strip()
+                    learning_material = json.loads(cleaned_response)
                 # Save to cache
                 st.session_state.learning_materials_cache[pid][current_day_task['day']] = learning_material
             # The script will now continue and render the newly generated content
@@ -200,7 +204,11 @@ with col2:
                 Please answer the student's question based on the learning material. If the question is outside the scope of the material, politely say so.
                 """
                 
-                response = model.generate_content(full_prompt)
-                answer = response.text
-                st.markdown(answer)
-                st.session_state.learn_messages.append({"role": "assistant", "content": answer})
+                response = ai_manager.generate_content(full_prompt)
+                if not response:
+                    st.error("AI returned no response to your question.")
+                    st.session_state.learn_messages.append({"role": "assistant", "content": "AI returned no response."})
+                else:
+                    answer = response
+                    st.markdown(answer)
+                    st.session_state.learn_messages.append({"role": "assistant", "content": answer})
