@@ -1,4 +1,4 @@
-# AI Tutor · An AI teacher who teaches better than your college one.
+# Learnflow · An AI teacher who teaches better than your college one.
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
 [![Built with](https://img.shields.io/badge/stack-SQLite3%20%7C%20Streamlit&Python%20%7C%20CSS%20%7C%20LLM-blue)](#tech-stack)
