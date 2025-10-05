@@ -3,6 +3,7 @@ from db_functions import get_plans_by_user, update_plan_content
 from utils import ensure_plan_selected
 from config import get_ai_manager
 import json
+from auth_helper import require_api_key
 
 st.markdown("""
     <style>
@@ -210,6 +211,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="Adjust Plan", layout="wide")
+
+# check API key validation
+require_api_key()
 
 # --- Check for selected plan ---
 pid = ensure_plan_selected()

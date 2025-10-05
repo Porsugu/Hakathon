@@ -1,9 +1,10 @@
 import streamlit as st
 from db_functions import get_knowledge_items_by_plan, get_plans_by_user, add_knowledge_item
 from utils import ensure_plan_selected
+from config import get_ai_manager
 import re
-import google.generativeai as genai
 import json
+from auth_helper import require_api_key
 
 st.markdown("""
     <style>
@@ -122,16 +123,17 @@ st.markdown("""
 
 st.set_page_config(page_title="Ask Something", layout="wide")
 
+# check API key validation
+require_api_key()
+
 # --- Check for selected plan ---
 pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
 # --- AI Configuration ---
-try:
-    genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
-    model = genai.GenerativeModel('gemini-2.5-flash')
-except Exception as e:
-    st.error(f"AI Model could not be configured: {e}")
+ai_manager = get_ai_manager()
+if not ai_manager.initialize():
+    st.error("AI could not be initialized. Check your secrets or environment variables.")
     st.stop()
 
 # --- Fetch Data for Context ---
@@ -294,8 +296,13 @@ with col2:
                 ---
                 """
 
-                response = model.generate_content(full_prompt)
-                answer_text = response.text
+                # Use centralized AI manager from config
+                # Disable the ai_manager's internal spinner because we already show
+                # a Streamlit spinner above. This prevents the "Thinking" indicator
+                # from appearing twice.
+                response = ai_manager.generate_content(full_prompt, show_spinner=False)
+                # ai_manager returns the text directly
+                answer_text = response
 
                 try:
                     # Attempt to parse the AI's response as JSON
@@ -327,4 +334,5 @@ with col2:
                     # If JSON parsing fails, treat it as a simple conversational response
                     st.markdown(answer_text)
                     st.session_state.ask_messages.append({"role": "assistant", "content": answer_text})
+                    st.session_state.blackboard_item = None # Clear blackboard
                     st.session_state.blackboard_item = None # Clear blackboard

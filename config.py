@@ -12,15 +12,19 @@ class Config:
         Locate and return the GEMINI API key.
 
         Search order:
+        0. Session state (from login page)
         1. streamlit secrets (st.secrets)
         2. environment variable GEMINI_API_KEY
-        3. local file `mykey.env` (loaded via python-dotenv)
 
         Returns:
           (True, api_key) on success
           (False, error_message) on failure
         """
-        # 1) Streamlit secrets (good for Streamlit Cloud)
+        # 1) Session state (highest priority - from login page)
+        if hasattr(st.session_state, 'gemini_api_key') and st.session_state.get('gemini_api_key'):
+            return True, st.session_state['gemini_api_key']
+
+        # 2) Streamlit secrets (good for Streamlit Cloud)
         try:
             if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
                 return True, st.secrets["GEMINI_API_KEY"]
@@ -28,15 +32,14 @@ class Config:
             # In some contexts st.secrets might not be available; ignore and continue
             pass
 
-        # 2) Environment variable
+        # 3) Environment variable
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             return True, api_key
 
-        # No fallback to local mykey.env to avoid accidental committed secrets.
+        # If no API key found, redirect to login page
         return False, (
-            "GEMINI_API_KEY not found. Set it in Streamlit secrets (recommended) or as an environment variable. "
-            "See .streamlit/secrets.example.toml for a template."
+            "GEMINI_API_KEY not found. Please validate your API key first."
         )
 
 
@@ -47,8 +50,6 @@ config = Config()
 ########### AI Manager (moved from ai_utils.py) ###########
 import google.generativeai as genai
 import time
-import json
-
 
 class AIManager:
     """Manages AI model initialization and common operations"""
@@ -105,7 +106,16 @@ class AIManager:
                 return None
 
         except Exception as e:
-            st.error(f"❌ AI Error: {str(e)}")
+            error_msg = str(e)
+            if "API_KEY_INVALID" in error_msg or "invalid" in error_msg.lower():
+                st.error("❌ Invalid API key. Please update your API key.")
+                # Clear the session and redirect to login
+                st.session_state['api_key_validated'] = False
+                if 'gemini_api_key' in st.session_state:
+                    del st.session_state['gemini_api_key']
+                st.switch_page("login.py")
+            else:
+                st.error(f"❌ AI Error: {error_msg}")
             return None
 
 
