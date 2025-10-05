@@ -1,0 +1,23 @@
+cookie:
+  name: some_cookie_name
+  key: some_signature_key # Must be string
+  expiry_days: 30
+
+preauthorized:
+  emails:
+  - joycelyntsang@gmail.com
+
+credentials:
+  usernames:
+    # jsmith:
+    #   email: joycelyntsang@gmail.com
+    #   name: joycelyntsang
+    #   password: 'abc' # To be replaced with hashed password
+    # rbriggs:
+    #   email: rbriggs@gmail.com
+    #   name: Rebecca Briggs
+    #   password: 'def' # To be replaced with hashed password
+  social_providers:
+    google:
+      client_id: "700087416013-8r47qlsjf7vspevr4k43ki56qn2s7mjh.apps.googleusercontent.com" # 替換成你的 Google Client ID
+      client_secret: "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" # 替換成你的 Google Client Secret
