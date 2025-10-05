@@ -51,3 +51,8 @@ else:
                     st.warning("Could not display progress.")
                 
                 st.caption(f"Created: {plan['created_at'].split(' ')[0]}")
+
+                # Add a button to navigate to the plan details page
+                if st.button("View Plan", key=f"view_{plan['pid']}", use_container_width=True):
+                    st.session_state['current_plan_id'] = plan['pid']
+                    st.switch_page("pages/2_Plan_Details.py")
