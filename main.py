@@ -1,14 +1,49 @@
 # Home.py
 import streamlit as st
+import api_log
+import os
 from db_functions import get_plans_by_user, delete_plan
 import json
-import math
+from change_api import render_api_key_sidebar, get_sidebar_css
+
+# --- API Key Validation Check --- 
+# could be set up using setup.py / api_log.py
+def check_api_key_validation():
+    """Check if API key has been validated; if not, try to load from secrets or env and
+    otherwise render the login UI inline.
+    """
+    # 1) session already validated
+    if st.session_state.get('api_key_validated', False):
+        return
+
+    # 2) Check Streamlit secrets (secrets.toml) first
+    try:
+        if hasattr(st, 'secrets') and 'GEMINI_API_KEY' in st.secrets and st.secrets['GEMINI_API_KEY']:
+            st.session_state['gemini_api_key'] = st.secrets['GEMINI_API_KEY']
+            st.session_state['api_key_validated'] = True
+            return
+    except Exception:
+        # st.secrets may not be available in some contexts; ignore and continue
+        pass
+
+    # 3) Check environment variable as fallback
+    env_key = os.environ.get('GEMINI_API_KEY')
+    if env_key:
+        st.session_state['gemini_api_key'] = env_key
+        st.session_state['api_key_validated'] = True
+        return
+
+    # 4) Otherwise, render the login UI inline
+    api_log.show_login_page()
+    st.stop()
+
+# Check API key validation first
+check_api_key_validation()
 
 # --- Sidebar Lock Control ---
 # This boolean controls whether the sidebar can be opened.
 # When set to False, the button to open the sidebar will be hidden.
 allow_sidebar = False
-
 
 # --- CSS Styles ---
 css_styles = """
@@ -54,7 +89,7 @@ css_styles = """
         [data-testid="stProgress"] > div > div {
             background-color: #0078ff !important;
         }
-            
+
         /* Remove background from progress bar label */
         [data-testid="stProgress"] [data-testid="stMarkdownContainer"] {
             background: transparent !important;
@@ -68,7 +103,7 @@ css_styles = """
             padding: 1em;
             margin-bottom: 1em;
         }
-            
+
         section[data-testid="stSidebar"] .stAlert {
             border: none !important;
             background-color: transparent !important;
@@ -78,7 +113,7 @@ css_styles = """
         section[data-testid="stSidebar"] .stAlert p {
             color: #f5f5f5 !important;
         }
-        
+
         div.stAlert {
             border: none !important;
             background-color: transparent !important;
@@ -88,7 +123,7 @@ css_styles = """
         div.stAlert p {
             color: #f5f5f5 !important;
         }
-            
+
         header[data-testid="stHeader"] {
             background-color: #0e1117 !important; 
             color: #f5f5f5 !important;           
@@ -120,6 +155,9 @@ css_styles = """
             border-radius: 8px;
             padding: 1em;
         }
+        
+        /* Add the fixed sidebar CSS */
+        {get_sidebar_css()}
 """
 
 if not allow_sidebar:
@@ -145,6 +183,7 @@ if 'user_id' not in st.session_state:
 
 # --- Display Existing Plans ---
 st.header("My Learning Plans")
+
 uid = st.session_state['user_id']
 
 # --- ADDED THIS BUTTON ---
@@ -200,7 +239,7 @@ else:
                     st.progress(progress, text=f"{completed_days} / {total_days} Days Completed")
                 except (json.JSONDecodeError, TypeError):
                     st.warning("Could not display progress.")
-                
+
                 st.caption(f"Created: {plan['created_at'].split(' ')[0]}")
 
                 view_col, delete_col = st.columns(2)
@@ -215,8 +254,10 @@ else:
                         delete_plan(uid, plan['pid'])
                         st.toast(f"Plan '{plan['plan_name']}' deleted successfully!")
                         st.rerun()
-    
+
     with right_nav_col:
         if st.button("▶", key="right_arrow", use_container_width=True, disabled=(current_index >= total_plans - 1)):
             st.session_state.plan_page_index += 1
             st.rerun()
+            
+# render_api_key_sidebar()

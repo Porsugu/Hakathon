@@ -1,9 +1,12 @@
 import streamlit as st
 from db_functions import get_knowledge_items_by_plan, get_plans_by_user
 from utils import ensure_plan_selected
-import google.generativeai as genai
+from auth_helper import require_api_key
+from config import get_ai_manager
+
+# check API key validation
+require_api_key()
 import json
-import random
 
 st.markdown("""
     <style>
@@ -119,11 +122,9 @@ pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
 # --- AI Configuration ---
-try:
-    genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
-    model = genai.GenerativeModel('gemini-2.5-flash')
-except Exception as e:
-    st.error(f"AI Model could not be configured: {e}")
+ai_manager = get_ai_manager()
+if not ai_manager.initialize():
+    st.error("AI could not be initialized. Check your secrets or environment variables.")
     st.stop()
 
 # --- Fetch Data ---
@@ -183,8 +184,10 @@ def generate_exercises(items):
     ---
     Generate the JSON quiz now.
     """
-    response = model.generate_content(prompt)
-    cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+    response = ai_manager.generate_content(prompt, show_spinner=True, spinner_text="🤖 Generating your exercise...")
+    if not response:
+        raise Exception("AI returned no content")
+    cleaned_response = response.replace("```json", "").replace("```", "").strip()
     return json.loads(cleaned_response)
 
 # --- Initialize session state for exercises and chat ---
@@ -258,8 +261,8 @@ with col1:
                             - If it is incorrect, gently point out the mistake and provide a clear explanation of the correct answer.
                             - Keep your response concise and encouraging.
                             """
-                            response = model.generate_content(check_prompt)
-                            st.session_state.exercise_feedback[i] = response.text
+                            response = ai_manager.generate_content(check_prompt, show_spinner=True, spinner_text="🤖 Checking your answer...")
+                            st.session_state.exercise_feedback[i] = response or "No feedback returned."
                     else:
                         st.session_state.exercise_feedback[i] = "Please provide an answer before checking."
 
@@ -309,18 +312,24 @@ with col2:
                 {current_questions_json}
                 """
 
-                response = model.generate_content(full_prompt)
-                answer = response.text
+                response = ai_manager.generate_content(full_prompt, show_spinner=True, spinner_text="🤖 Thinking...")
+                if not response:
+                    st.session_state.exercise_messages.append({"role": "assistant", "content": "AI returned no response."})
+                    st.markdown("AI returned no response.")
+                    answer = None
+                else:
+                    answer = response
 
                 # Check if the AI returned a new JSON to replace the questions
-                try:
-                    cleaned_response = answer.strip().replace("```json", "").replace("```", "")
-                    new_questions = json.loads(cleaned_response)
-                    if "questions" in new_questions:
-                        st.session_state.exercise_questions = new_questions
-                        st.session_state.exercise_messages.append({"role": "assistant", "content": "I've updated the questions for you! They are now shown on the left."})
-                        st.rerun()
-                except (json.JSONDecodeError, TypeError):
-                    # The response was not a valid JSON, so treat it as a conversational answer
-                    st.session_state.exercise_messages.append({"role": "assistant", "content": answer})
-                    st.markdown(answer)
+                if answer:
+                    try:
+                        cleaned_response = answer.strip().replace("```json", "").replace("```", "")
+                        new_questions = json.loads(cleaned_response)
+                        if "questions" in new_questions:
+                            st.session_state.exercise_questions = new_questions
+                            st.session_state.exercise_messages.append({"role": "assistant", "content": "I've updated the questions for you! They are now shown on the left."})
+                            st.rerun()
+                    except (json.JSONDecodeError, TypeError):
+                        # The response was not a valid JSON, so treat it as a conversational answer
+                        st.session_state.exercise_messages.append({"role": "assistant", "content": answer})
+                        st.markdown(answer)

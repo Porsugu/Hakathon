@@ -1,8 +1,12 @@
 import streamlit as st
 from db_functions import get_knowledge_items_by_plan, get_plans_by_user, add_knowledge_item
 from utils import ensure_plan_selected
-import google.generativeai as genai
+from config import get_ai_manager
 import json
+from auth_helper import require_api_key
+
+# check API key validation
+require_api_key()
 
 st.markdown("""
     <style>
@@ -118,11 +122,9 @@ pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
 # --- AI Configuration ---
-try:
-    genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
-    model = genai.GenerativeModel('gemini-2.5-flash')
-except Exception as e:
-    st.error(f"AI Model could not be configured: {e}")
+ai_manager = get_ai_manager()
+if not ai_manager.initialize():
+    st.error("AI could not be initialized. Check your secrets or environment variables.")
     st.stop()
 
 # --- Fetch Data for Context ---
@@ -229,8 +231,8 @@ with col2:
                 ---
                 """
 
-                response = model.generate_content(full_prompt)
-                answer_text = response.text
+                response = ai_manager.generate_content(full_prompt, show_spinner=True, spinner_text="🤖 Thinking...")
+                answer_text = response
 
                 try:
                     # Attempt to parse the AI's response as JSON
