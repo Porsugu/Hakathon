@@ -4,6 +4,7 @@ Handles database initialization, environment checks, and first-time setup
 """
 import os
 import sys
+import importlib
 from database_setup import setup_database
 from config import Config
 from pathlib import Path
@@ -18,18 +19,29 @@ def check_python_version():
 
 def check_dependencies():
     """Check if all required packages are installed"""
+    # Map pip package names to one or more plausible import names.
+    # Some packages use dots in their import path (e.g. google.generativeai)
     required_packages = [
-        'streamlit', 'google-generativeai'
+        ("streamlit", ["streamlit"]),
+        ("google-generativeai", ["google.generativeai", "google_generativeai", "google"]) 
     ]
 
     missing = []
-    for package in required_packages:
-        try:
-            __import__(package.replace('-', '_'))
-            print(f"✅ {package} is installed")
-        except ImportError:
-            missing.append(package)
-            print(f"❌ {package} is missing")
+    for pip_name, import_candidates in required_packages:
+        found = False
+        for import_name in import_candidates:
+            try:
+                importlib.import_module(import_name)
+                print(f"✅ {pip_name} (import as '{import_name}') is installed")
+                found = True
+                break
+            except Exception:
+                # try the next candidate
+                continue
+
+        if not found:
+            missing.append(pip_name)
+            print(f"❌ {pip_name} is missing (tried imports: {', '.join(import_candidates)})")
 
     if missing:
         print(f"\nTo install missing packages, run:")
