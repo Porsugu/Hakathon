@@ -42,13 +42,13 @@ def get_user_by_username(username):
 
 # --- Plan Functions ---
 
-def add_plan(uid, plan_name, daily_content_json):
+def add_plan(uid, plan_name, daily_content_json, special_instructions=None):
     """
     Add a learning plan for a specific user.
     """
-    sql = "INSERT INTO plans (uid, plan_name, daily_content) VALUES (?, ?, ?)"
+    sql = "INSERT INTO plans (uid, plan_name, daily_content, special_instructions) VALUES (?, ?, ?, ?)"
     with get_db_connection() as conn:
-        conn.execute(sql, (uid, plan_name, daily_content_json))
+        conn.execute(sql, (uid, plan_name, daily_content_json, special_instructions))
         conn.commit()
 
 
@@ -69,6 +69,16 @@ def update_plan_content(pid, new_daily_content_json):
     sql = "UPDATE plans SET daily_content = ? WHERE pid = ?"
     with get_db_connection() as conn:
         conn.execute(sql, (new_daily_content_json, pid))
+        conn.commit()
+
+
+def update_plan_instructions(uid, pid, new_instructions):
+    """
+    Update the special instructions for a specific plan belonging to a user.
+    """
+    sql = "UPDATE plans SET special_instructions = ? WHERE pid = ? AND uid = ?"
+    with get_db_connection() as conn:
+        conn.execute(sql, (new_instructions, pid, uid))
         conn.commit()
 
 

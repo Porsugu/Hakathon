@@ -191,6 +191,13 @@ st.markdown("""
             border-radius: 12px !important;
             padding: 1em !important;
         }
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -217,8 +224,16 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # --- Page Title ---
-st.title("🛠️ Adjust Your Learning Plan")
-st.info("Use the chat on the right to ask the AI to modify your plan. For example: 'Make day 3 easier' or 'Add a day about testing'.")
+title_col, back_button_col = st.columns([0.8, 0.2])
+with title_col:
+    st.title("🛠️ Adjust Your Learning Plan")
+with back_button_col:
+    st.markdown('<div class="back-button-container">', unsafe_allow_html=True)
+    if st.button("◀ Back", use_container_width=True):
+        st.switch_page("pages/2_Plan_Details.py")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.info("Use the chat on the right to ask the AI to modify your plan. For example: 'Make day 3 easier' or 'Add a day about testing'.", icon="💡")
 st.divider()
 
 # --- Layout ---
@@ -268,6 +283,7 @@ with col2:
                 
                 Please generate a new, updated plan based on the user's request.
                 Your response MUST be only the updated JSON array, with no other text or markdown.
+                IMPORTANT: All backslashes `\` inside the JSON string values must be properly escaped (as `\\`).
                 The JSON structure for each day must contain 'day', 'topic', 'details', and 'status' keys.
                 """
                 

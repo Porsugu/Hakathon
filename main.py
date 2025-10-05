@@ -3,7 +3,15 @@ import streamlit as st
 from db_functions import get_plans_by_user, delete_plan
 import json
 import math
-st.markdown("""
+
+# --- Sidebar Lock Control ---
+# This boolean controls whether the sidebar can be opened.
+# When set to False, the button to open the sidebar will be hidden.
+allow_sidebar = False
+
+
+# --- CSS Styles ---
+css_styles = """
     <style>
         /* General background and text */
         .stApp {
@@ -105,9 +113,28 @@ st.markdown("""
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
+        }
+"""
+
+if not allow_sidebar:
+    # This CSS finds the button that opens the sidebar (the hamburger menu) and hides it.
+    css_styles += """
+        button[title="Open navigation"] {
+            display: none !important;
+        }
+"""
+
+css_styles += """
     </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(css_styles, unsafe_allow_html=True)
 
 st.title("🚀 Your Learning OS")
 st.sidebar.success("Select a page above to get started.")

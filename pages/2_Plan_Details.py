@@ -1,5 +1,6 @@
 import streamlit as st
 from db_functions import get_plans_by_user
+from utils import ensure_plan_selected
 import json
 
 st.markdown("""
@@ -92,6 +93,26 @@ st.markdown("""
         header[data-testid="stHeader"] {
             box-shadow: none !important;
         }
+
+        /* Make the container for the back button invisible */
+        .back-button-container > div {
+            background-color: transparent !important;
+            border: none !important;
+        }
+
+        /* Make the container for the title bar invisible */
+        .title-bar-container > div > div > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
+        }
         
     </style>
 """, unsafe_allow_html=True)
@@ -106,12 +127,7 @@ def card(title, icon):
     return clicked
 
 # --- Check for selected plan and display header ---
-if 'current_plan_id' not in st.session_state:
-    st.error("No plan selected. Please go back to the homepage and select a plan.")
-    st.page_link("main.py", label="Go to Homepage", icon="🏠")
-    st.stop()
-
-pid = st.session_state['current_plan_id']
+pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1) # Default to 1 if not found
 
 # Fetch all plans and find the current one by pid
@@ -123,25 +139,49 @@ if not current_plan:
     st.page_link("main.py", label="Go to Homepage", icon="🏠")
     st.stop()
 
-st.title(f"Plan: {current_plan['plan_name']}")
+title_col, back_button_col = st.columns([0.8, 0.2])
+with title_col:
+    st.title(f"Plan: {current_plan['plan_name']}")
+with back_button_col:
+    st.markdown('<div class="back-button-container">', unsafe_allow_html=True)
+    if st.button("◀ Back", use_container_width=True):
+        st.switch_page("main.py")
+    st.markdown('</div>', unsafe_allow_html=True)
+
 st.caption("Select an option below to manage your learning plan.")
 st.divider()
 
-# --- Display the four action cards ---
-col1, col2, col3, col4 = st.columns(4)
+# --- Display the action cards ---
+col1, col2, col3 = st.columns(3)
 
 with col1:
     if card("Adjust Plan", "🛠️"):
+        st.query_params["pid"] = pid
         st.switch_page("pages/3_Adjust_Plan.py")
 
 with col2:
     if card("Learn Today", "📖"):
+        st.query_params["pid"] = pid
         st.switch_page("pages/4_Learn_Today.py")
 
 with col3:
     if card("Review", "🧠"):
-        st.info("This feature is coming soon!")
+        st.query_params["pid"] = pid
+        st.switch_page("pages/5_Review.py")
+
+col4, col5, col6 = st.columns(3)
 
 with col4:
+    if card("Exercise", "✍️"):
+        st.query_params["pid"] = pid
+        st.switch_page("pages/6_Exercise.py")
+
+with col5:
     if card("Ask Something", "❓"):
-        st.info("This feature is coming soon!")
+        st.query_params["pid"] = pid
+        st.switch_page("pages/7_Ask.py")
+
+with col6:
+    if card("Instruction", "📝"):
+        st.query_params["pid"] = pid
+        st.switch_page("pages/8_Instruction.py")

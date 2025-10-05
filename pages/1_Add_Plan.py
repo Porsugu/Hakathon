@@ -89,6 +89,13 @@ st.markdown("""
         header[data-testid="stHeader"] {
             box-shadow: none !important;
         }
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
+        }
         
     </style>
 """, unsafe_allow_html=True)
@@ -142,6 +149,7 @@ st.title("Add a New Learning Plan")
 st.info("Define your learning goal and the number of days you want to commit. Our AI will generate a customized day-by-day plan for you.")
 learning_target = st.text_input("What do you want to learn?", placeholder="e.g., 'Python for Data Science' or 'the basics of Guitar'")
 learning_time = st.number_input("Learning Time (in days)", min_value=1, step=1)
+special_instructions = st.text_area("Special Instructions (Optional)", placeholder="e.g., 'Focus on practical examples', 'Avoid complex theory at the beginning'")
 
 # Add Plan button
 if st.button("Submit"):
@@ -160,7 +168,7 @@ if st.button("Submit"):
                 json.loads(daily_content_json)
 
                 # Add the plan to the database
-                add_plan(uid, learning_target, daily_content_json)
+                add_plan(uid, learning_target, daily_content_json, special_instructions)
 
                 st.success("Your new learning plan has been created successfully!")
                 st.balloons()

@@ -30,6 +30,7 @@ def setup_database():
         uid INTEGER NOT NULL,
         plan_name TEXT NOT NULL,
         daily_content TEXT NOT NULL,
+        special_instructions TEXT, -- Optional instructions for the AI
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (uid) REFERENCES users (uid)
     );
@@ -50,13 +51,25 @@ def setup_database():
     );
     ''')
 
+    # --- 4. Safely add new columns to existing tables (for migrations) ---
+    try:
+        # Add the special_instructions column to the plans table if it doesn't exist
+        cursor.execute("ALTER TABLE plans ADD COLUMN special_instructions TEXT;")
+        print("✅ Added 'special_instructions' column to 'plans' table.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            # This is expected if the column already exists, so we can ignore it.
+            pass
+        else:
+            raise e # Raise any other unexpected database errors.
+
     # Commit changes (save)
     conn.commit()
 
     # Close the connection
     conn.close()
 
-    print("Database 'learning_os.db' has been successfully created, and the three tables are ready.")
+    print("✅ Database 'learning_os.db' is set up and ready.")
 
 # --- Main Execution Area ---
 if __name__ == '__main__':

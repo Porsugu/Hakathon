@@ -7,7 +7,7 @@ from config import config
 from config import get_ai_manager
 
 st.markdown("""
-    <style> 
+    <style>
         /* General dark background and text */
         .stApp {
             background-color: #0e1117;
@@ -17,64 +17,72 @@ st.markdown("""
             color: #f5f5f5 !important;
         }
 
-        /* Top bar */
-        header[data-testid="stHeader"] {
-            background-color: #0e1117 !important;
-            color: #f5f5f5 !important;
-            box-shadow: none !important;
-        }
-        header[data-testid="stHeader"] .css-1v0mbdj {
-            color: #f5f5f5 !important;
-        }
-
-        /* Sidebar */
+        /* Sidebar styling */
         section[data-testid="stSidebar"] {
-            background-color: #1a1d23 !important;
-            color: #f5f5f5 !important;
-        }
-        section[data-testid="stSidebar"] .stAlert {
-            border: none !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-        }
-        section[data-testid="stSidebar"] .stAlert p {
-            color: #f5f5f5 !important;
+            background-color: #1a1d23;
+            color: #f5f5f5;
         }
 
         /* Buttons */
         div.stButton > button {
             background-color: #0078ff;
             color: white;
-\
+            border-radius: 8px;
+            border: none;
+            padding: 0.6em 1em;
+            font-weight: 600;
+            transition: 0.2s ease-in-out;
         }
         div.stButton > button:hover {
             background-color: #0056b3;
             transform: scale(1.05);
         }
 
-        /* Info / Error / Success Boxes */
+        /* Info boxes */
         .stAlert {
-            border: none !important;
-            background-color: transparent !important;
-            color: #f5f5f5 !important;
+            background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+            border: none;
+        }
+
+        /* Containers */
+        div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] {
+            background-color: #1a1d23;
+            border: 1px solid #2e3440;
+            border-radius: 12px;
+            padding: 1em;
+            margin-bottom: 1em;
+        }
+            
+        header[data-testid="stHeader"] {
+            background-color: #0e1117 !important; 
+            color: #f5f5f5 !important;           
             box-shadow: none !important;
         }
 
-        /* Progress bars */
-        [data-testid="stProgress"] > div > div {
-            background-color: #0078ff !important;
+        /* Make the container for the back button invisible */
+        .back-button-container > div {
+            background-color: transparent !important;
+            border: none !important;
         }
 
-        /* Chat input box */
-        div[data-testid="stChatInput"] textarea {
-            color: #f5f5f5 !important;
+        /* Make the container for the title bar invisible */
+        .title-bar-container > div > div > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
         }
 
-        /* Chat messages */
-        div[data-testid="stChatMessage"] {
-            background-color: #1a1d23 !important;
-            border-radius: 12px !important;
-            padding: 1em !important;
+        /* Hide the sidebar hamburger button */
+        button[title="Open navigation"] {
+            display: none !important;
+        }
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -140,8 +148,16 @@ if st.session_state.viewed_day_index >= len(daily_content):
 current_day_index = st.session_state.viewed_day_index
 current_day_task = daily_content[current_day_index]
 
-st.title(f"📖 Learn: {plan_data['plan_name']}")
-st.caption(f"Part of your plan: **{plan_data['plan_name']}**")
+title_col, back_button_col = st.columns([0.8, 0.2])
+with title_col:
+    st.title(f"📖 Learn: {plan_data['plan_name']}")
+    st.caption(f"Part of your plan: **{plan_data['plan_name']}**")
+with back_button_col:
+    st.markdown('<div class="back-button-container">', unsafe_allow_html=True)
+    if st.button("◀ Back", use_container_width=True):
+        st.switch_page("pages/2_Plan_Details.py")
+    st.markdown('</div>', unsafe_allow_html=True)
+
 st.divider()
 
 # --- Day Navigation ---
@@ -183,15 +199,27 @@ with col1:
             learning_material = st.session_state.learning_materials_cache[pid][current_day_task['day']]
         else:
             with st.spinner("🤖 Generating today's lesson..."):
+                special_instructions = plan_data['special_instructions'] if 'special_instructions' in plan_data.keys() else None
+                instruction_prompt_part = ""
+                if special_instructions:
+                    instruction_prompt_part = f"""
+                Additionally, please adhere to the following special instructions from the user for their teaching materials:
+                ---
+                {special_instructions}
+                ---
+                """
+
                 prompt = f"""
                 Please act as a helpful and patient tutor. Your task is to generate comprehensive learning material for a complete beginner.
                 Break the topic down into its most fundamental, atomic concepts. Each concept should be explained clearly and concisely, as if you are creating study notes.
 
                 The topic is: "{current_day_task['topic']}"
                 The specific learning goals are: "{current_day_task['details']}"
+                {instruction_prompt_part}
                 
                 Your response MUST be a single valid JSON object.
                 This object must have one key: "learning_material".
+                IMPORTANT: All backslashes `\` inside the JSON string values must be properly escaped (as `\\`).
                 The value of "learning_material" must be an array of content blocks. Each block is an object with a "type" and "content".
                 
                 Here are the available types and their "content" structure:
@@ -224,10 +252,13 @@ with col1:
                 response = ai_manager.generate_content(prompt)
                 if not response:
                     st.error("AI returned no content for learning material.")
-                    learning_material = {"knowledge_points": []}
+                    learning_material = {"learning_material": []}
                 else:
                     cleaned_response = response.replace("```json", "").replace("```", "").strip()
-                    learning_material = json.loads(cleaned_response)
+                    # A more robust way to handle backslashes for JSON parsing.
+                    # This escapes backslashes that are not already part of a valid escape sequence.
+                    import re
+                    learning_material = json.loads(re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', cleaned_response))
                 # Save to cache
                 st.session_state.learning_materials_cache[pid][current_day_task['day']] = learning_material
                 # Force a rerun to re-evaluate the 'is_generating' flag and enable the buttons.
@@ -243,7 +274,7 @@ with col1:
             elif block_type == "key_concept" and isinstance(content, dict):
                 with st.container(border=True):
                     st.subheader(content.get("term", "Key Concept"))
-                    st.write(content.get("definition"))
+                    st.markdown(content.get("definition", ""))
                     if content.get("example"):
                         st.markdown(f"**Example:** {content.get('example')}")
                     if st.button("Save to Knowledge Base", key=f"save_concept_{i}"):
@@ -254,7 +285,7 @@ with col1:
             elif block_type == "theorem" and isinstance(content, dict):
                 with st.container(border=True):
                     st.subheader(content.get("name", "Theorem/Rule"))
-                    st.write(content.get("statement"))
+                    st.markdown(content.get("statement", ""))
                     if content.get("example"):
                         st.markdown(f"**Example:** {content.get('example')}")
                     if st.button("Save to Knowledge Base", key=f"save_theorem_{i}"):
@@ -268,7 +299,7 @@ with col1:
                     st.subheader(equation_title)
                     st.latex(content.get("equation", ""))
                     if content.get("explanation"):
-                        st.write(content.get("explanation"))
+                        st.markdown(content.get("explanation", ""))
                     if st.button("Save to Knowledge Base", key=f"save_equation_{i}"):
                         # Format the equation and explanation for saving
                         full_definition = f"```latex\n{content.get('equation', '')}\n```\n\n**Explanation:**\n{content.get('explanation', 'No explanation provided.')}"
@@ -307,7 +338,7 @@ with col1:
                     st.subheader(code_title)
                     st.code(content.get("code", ""), language=content.get("language", "plaintext"))
                     if content.get("explanation"):
-                        st.write(content.get("explanation"))
+                        st.markdown(content.get("explanation", ""))
                     if st.button("Save to Knowledge Base", key=f"save_code_{i}"):
                         # Format the code and explanation for saving
                         full_definition = f"```\n{content.get('code', '')}\n```\n\n**Explanation:**\n{content.get('explanation', 'No explanation provided.')}"
@@ -359,21 +390,62 @@ with col2:
 
                 context = "\n".join(context_list)
 
+                special_instructions = plan_data['special_instructions'] if 'special_instructions' in plan_data.keys() else None
+                instruction_prompt_part = ""
+                if special_instructions:
+                    instruction_prompt_part = f"""
+                When answering, please also adhere to the following special instructions from the user regarding teaching style:
+                ---
+                {special_instructions}
+                ---
+                """
+
+                original_material_json = json.dumps(learning_material, indent=2)
                 full_prompt = f"""
-                You are a helpful tutor. A student is currently studying the following material:
-                ---
-                {context}
-                ---
-                The student's question is: "{prompt}"
-                
-                Please answer the student's question based on the learning material. If the question is outside the scope of the material, politely say so.
+                You are a helpful tutor. A student is studying the learning material below and has a request.
+
+                **User's Request:** "{prompt}"
+
+                **Current Learning Material (JSON):**
+                ```json
+                {original_material_json}
+                ```
+
+                **Your Task:**
+                1.  Analyze the user's request.
+                2.  If the request is a simple question that can be answered conversationally, respond with a JSON object like this:
+                    `{{"action": "answer", "content": "Your conversational answer here."}}`
+                3.  If the request implies a change to the learning material (e.g., "make it simpler", "add an example", "show this as a table"), you MUST regenerate the **entire** `learning_material` array and respond with a JSON object like this:
+                    `{{"action": "regenerate", "content": {{"learning_material": [...]}}}}`
+                    The regenerated content must follow the exact same structure as the original.
+                4.  Your response must be ONLY the JSON object.
+                5.  IMPORTANT: All backslashes `\` inside the JSON string values must be properly escaped (as `\\`).
+
+                {instruction_prompt_part}
                 """
                 
-                response = ai_manager.generate_content(full_prompt)
-                if not response:
-                    st.error("AI returned no response to your question.")
+                response_text = ai_manager.generate_content(full_prompt)
+                if not response_text:
+                    st.error("AI returned no response.")
                     st.session_state.learn_messages.append({"role": "assistant", "content": "AI returned no response."})
                 else:
-                    answer = response
-                    st.markdown(answer)
-                    st.session_state.learn_messages.append({"role": "assistant", "content": answer})
+                    try:
+                        cleaned_response = response_text.strip().replace("```json", "").replace("```", "")
+                        # A more robust way to handle backslashes for JSON parsing.
+                        # This escapes backslashes that are not already part of a valid escape sequence.
+                        import re
+                        ai_response = json.loads(re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', cleaned_response))
+                        action = ai_response.get("action")
+                        content = ai_response.get("content")
+
+                        if action == "regenerate" and "learning_material" in content:
+                            st.session_state.learning_materials_cache[pid][current_day_task['day']] = content
+                            st.session_state.learn_messages.append({"role": "assistant", "content": "I've updated the learning material on the left based on your request!"})
+                            st.rerun()
+                        else: # Default to "answer"
+                            answer = content if isinstance(content, str) else content.get("answer", "I'm not sure how to respond to that.")
+                            st.markdown(answer)
+                            st.session_state.learn_messages.append({"role": "assistant", "content": answer})
+                    except (json.JSONDecodeError, TypeError):
+                        st.markdown(response_text) # Fallback for non-JSON response
+                        st.session_state.learn_messages.append({"role": "assistant", "content": response_text})

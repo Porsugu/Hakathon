@@ -4,8 +4,113 @@ from utils import ensure_plan_selected
 import google.generativeai as genai
 import json
 import random
-from config import config
-from config import get_ai_manager
+
+st.markdown("""
+    <style>
+        /* General background and text */
+        .stApp {
+            background-color: #0e1117;
+            color: #f5f5f5;
+        }
+        h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #f5f5f5 !important;
+        }
+
+        /* Sidebar styling */
+        section[data-testid="stSidebar"] {
+            background-color: #1a1d23;
+            color: #f5f5f5;
+        }
+
+        /* Buttons */
+        div.stButton > button {
+            background-color: #0078ff;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            padding: 0.6em 1em;
+            font-weight: 600;
+            transition: 0.2s ease-in-out;
+        }
+        div.stButton > button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        /* Info boxes */
+        .stAlert {
+            background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+            border: none;
+        }
+
+        /* Progress bar */
+        [data-testid="stProgress"] > div > div {
+            background-color: #0078ff !important;
+        }
+            
+        /* Remove background from progress bar label */
+        [data-testid="stProgress"] [data-testid="stMarkdownContainer"] {
+            background: transparent !important;
+        }
+
+        /* Containers */
+        div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] {
+            background-color: #1a1d23;
+            border: 1px solid #2e3440;
+            border-radius: 12px;
+            padding: 1em;
+            margin-bottom: 1em;
+        }
+            
+        section[data-testid="stSidebar"] .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        section[data-testid="stSidebar"] .stAlert p {
+            color: #f5f5f5 !important;
+        }
+        
+        div.stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        div.stAlert p {
+            color: #f5f5f5 !important;
+        }
+            
+        header[data-testid="stHeader"] {
+            background-color: #0e1117 !important; 
+            color: #f5f5f5 !important;           
+        }
+
+        header[data-testid="stHeader"] .css-1v0mbdj {
+            color: #f5f5f5 !important;
+        }
+
+        header[data-testid="stHeader"] {
+            box-shadow: none !important;
+        }
+
+        /* Make the container for the back button invisible */
+        .back-button-container > div {
+            background-color: transparent !important;
+            border: none !important;
+        }
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
+        }
+        
+    </style>
+""", unsafe_allow_html=True)
 
 st.set_page_config(page_title="Exercise", layout="wide")
 
@@ -14,9 +119,11 @@ pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
 # --- AI Configuration ---
-ai_manager = get_ai_manager()
-if not ai_manager.initialize():
-    st.error("AI could not be initialized. Check your secrets or environment variables.")
+try:
+    genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
+    model = genai.GenerativeModel('gemini-2.5-flash')
+except Exception as e:
+    st.error(f"AI Model could not be configured: {e}")
     st.stop()
 
 # --- Fetch Data ---
@@ -25,21 +132,38 @@ all_plans = get_plans_by_user(uid)
 current_plan = next((plan for plan in all_plans if plan['pid'] == pid), None)
 plan_name = current_plan['plan_name'] if current_plan else "Exercise"
 
-st.title(f"✍️ Exercise: {plan_name}")
+title_col, back_button_col = st.columns([0.8, 0.2])
+with title_col:
+    st.title(f"✍️ Exercise: {plan_name}")
+with back_button_col:
+    st.markdown('<div class="back-button-container">', unsafe_allow_html=True)
+    if st.button("◀ Back", use_container_width=True):
+        st.switch_page("pages/2_Plan_Details.py")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # --- Handle No Items ---
 if not knowledge_items:
     st.info("You haven't saved any knowledge items for this plan yet.")
     st.write("Go to the 'Learn Today' section to save concepts before you can practice!")
-    st.page_link("pages/2_Plan_Details.py", label="Back to Plan Dashboard", icon="⬅️")
     st.stop()
 
 # --- Function to generate exercises ---
 def generate_exercises(items):
     context = "\n".join([f"- {item['term']}: {item['definition']}" for item in items])
+    
+    special_instructions = current_plan['special_instructions'] if current_plan and 'special_instructions' in current_plan.keys() else None
+    instruction_prompt_part = ""
+    if special_instructions:
+        instruction_prompt_part = f"""
+    Additionally, please adhere to the following special instructions from the user when creating the questions:
+    ---
+    {special_instructions}
+    ---
+    """
+
     prompt = f"""
-    Based on the following knowledge items, create a quiz with exactly 10 questions.
+    Based on the following knowledge items, create a quiz with exactly 10 questions. {instruction_prompt_part}
     The quiz must include a mix of the following three types: 'short_answer', 'multiple_choice', and 'fill_in_the_blank'.
 
     Your response MUST be a single valid JSON object with a key "questions", which is an array of question objects.
@@ -59,10 +183,8 @@ def generate_exercises(items):
     ---
     Generate the JSON quiz now.
     """
-    response = ai_manager.generate_content(prompt)
-    if not response:
-        raise Exception("AI returned no content")
-    cleaned_response = response.replace("```json", "").replace("```", "").strip()
+    response = model.generate_content(prompt)
+    cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
     return json.loads(cleaned_response)
 
 # --- Initialize session state for exercises and chat ---
@@ -136,8 +258,8 @@ with col1:
                             - If it is incorrect, gently point out the mistake and provide a clear explanation of the correct answer.
                             - Keep your response concise and encouraging.
                             """
-                            response = ai_manager.generate_content(check_prompt)
-                            st.session_state.exercise_feedback[i] = response or "No feedback returned."
+                            response = model.generate_content(check_prompt)
+                            st.session_state.exercise_feedback[i] = response.text
                     else:
                         st.session_state.exercise_feedback[i] = "Please provide an answer before checking."
 
@@ -187,22 +309,18 @@ with col2:
                 {current_questions_json}
                 """
 
-                response = ai_manager.generate_content(full_prompt)
-                if not response:
-                    st.session_state.exercise_messages.append({"role": "assistant", "content": "AI returned no response."})
-                    st.markdown("AI returned no response.")
-                else:
-                    answer = response
+                response = model.generate_content(full_prompt)
+                answer = response.text
 
-                    # Check if the AI returned a new JSON to replace the questions
-                    try:
-                        cleaned_response = answer.strip().replace("```json", "").replace("```", "")
-                        new_questions = json.loads(cleaned_response)
-                        if "questions" in new_questions:
-                            st.session_state.exercise_questions = new_questions
-                            st.session_state.exercise_messages.append({"role": "assistant", "content": "I've updated the questions for you! They are now shown on the left."})
-                            st.rerun()
-                    except (json.JSONDecodeError, TypeError):
-                        # The response was not a valid JSON, so treat it as a conversational answer
-                        st.session_state.exercise_messages.append({"role": "assistant", "content": answer})
-                        st.markdown(answer)
+                # Check if the AI returned a new JSON to replace the questions
+                try:
+                    cleaned_response = answer.strip().replace("```json", "").replace("```", "")
+                    new_questions = json.loads(cleaned_response)
+                    if "questions" in new_questions:
+                        st.session_state.exercise_questions = new_questions
+                        st.session_state.exercise_messages.append({"role": "assistant", "content": "I've updated the questions for you! They are now shown on the left."})
+                        st.rerun()
+                except (json.JSONDecodeError, TypeError):
+                    # The response was not a valid JSON, so treat it as a conversational answer
+                    st.session_state.exercise_messages.append({"role": "assistant", "content": answer})
+                    st.markdown(answer)
