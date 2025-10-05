@@ -4,9 +4,6 @@ import json
 from config import get_ai_manager
 from auth_helper import require_api_key
 
-# check API key validation
-require_api_key()
-
 st.markdown("""
     <style>
         /* General background and text */
@@ -105,6 +102,9 @@ st.markdown("""
 
 # Set up the page
 st.set_page_config(page_title="Add Learning Plan", layout="wide")
+
+# check API key validation
+require_api_key()
 
 # --- AI Manager ---
 ai_manager = get_ai_manager()

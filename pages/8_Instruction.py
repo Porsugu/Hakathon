@@ -1,4 +1,5 @@
 import streamlit as st
+from auth_helper import require_api_key
 from db_functions import get_plans_by_user, update_plan_instructions
 from utils import ensure_plan_selected
 from config import get_ai_manager
@@ -76,6 +77,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="Edit Instructions", layout="wide")
+
+# check API key validation
+require_api_key()
 
 # --- Setup ---
 pid = ensure_plan_selected()

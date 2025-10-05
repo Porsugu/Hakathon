@@ -5,9 +5,6 @@ from config import get_ai_manager
 import json
 from auth_helper import require_api_key
 
-# check API key validation
-require_api_key()
-
 st.markdown("""
     <style>
         /* General background and text */
@@ -116,6 +113,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="Ask Something", layout="wide")
+
+# check API key validation
+require_api_key()
 
 # --- Check for selected plan ---
 pid = ensure_plan_selected()

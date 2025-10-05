@@ -37,7 +37,7 @@ def show_login_page():
 
     # Page config
     st.set_page_config(
-        page_title="🚀 Learning OS - Setup",
+        page_title="Learning OS - Setup",
         page_icon="🚀",
         layout="centered",
         initial_sidebar_state="collapsed"
@@ -45,7 +45,115 @@ def show_login_page():
 
     # Custom CSS for a better looking login page
     st.markdown("""
-    <style>
+     <style>
+        /* General background and text */
+        .stApp {
+            background-color: #0e1117;
+            color: #f5f5f5;
+        }
+        h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #f5f5f5 !important;
+        }
+
+        /* Sidebar styling */
+        section[data-testid="stSidebar"] {
+            background-color: #1a1d23;
+            color: #f5f5f5;
+        }
+
+        /* Buttons */
+        div.stButton > button {
+            background-color: #0078ff;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            padding: 0.6em 1em;
+            font-weight: 600;
+            transition: 0.2s ease-in-out;
+        }
+        div.stButton > button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        /* Info boxes */
+        .stAlert {
+            background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+            border: none;
+        }
+
+        /* Progress bar */
+        [data-testid="stProgress"] > div > div {
+            background-color: #0078ff !important;
+        }
+            
+        /* Remove background from progress bar label */
+        [data-testid="stProgress"] [data-testid="stMarkdownContainer"] {
+            background: transparent !important;
+        }
+
+        /* Containers */
+        div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] {
+            background-color: #1a1d23;
+            border: 1px solid #2e3440;
+            border-radius: 12px;
+            padding: 1em;
+            margin-bottom: 1em;
+        }
+            
+        section[data-testid="stSidebar"] .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        section[data-testid="stSidebar"] .stAlert p {
+            color: #f5f5f5 !important;
+        }
+        
+        div.stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        div.stAlert p {
+            color: #f5f5f5 !important;
+        }
+            
+        header[data-testid="stHeader"] {
+            background-color: #0e1117 !important; 
+            color: #f5f5f5 !important;           
+        }
+
+        header[data-testid="stHeader"] .css-1v0mbdj {
+            color: #f5f5f5 !important;
+        }
+
+        header[data-testid="stHeader"] {
+            box-shadow: none !important;
+        }
+
+        /* Make the container for the back button invisible */
+        .back-button-container > div {
+            background-color: transparent !important;
+            border: none !important;
+        }
+
+        /* Make the container for the title bar invisible */
+        .title-bar-container > div > div > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+
+        /* Style for copyable code/latex blocks */
+        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
+            background-color: #262730; /* A medium-dark grey */
+            border-radius: 8px;
+            padding: 1em;
+        }
     .login-container {
         max-width: 500px;
         margin: 0 auto;
@@ -108,13 +216,11 @@ def show_login_page():
                 help="Your API key will be stored securely in your session"
             )
 
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                submit_button = st.form_submit_button(
-                    "🔓 Validate & Continue",
-                    use_container_width=True,
-                    type="primary"
-                )
+            submit_button = st.form_submit_button(
+            "🔓 Validate & Continue",
+                use_container_width=True,  # Optional: Change to False if you don't want it full width
+                type="primary"
+            )
 
         # Handle form submission
         if submit_button:

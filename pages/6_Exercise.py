@@ -3,9 +3,6 @@ from db_functions import get_knowledge_items_by_plan, get_plans_by_user
 from utils import ensure_plan_selected
 from auth_helper import require_api_key
 from config import get_ai_manager
-
-# check API key validation
-require_api_key()
 import json
 
 st.markdown("""
@@ -116,6 +113,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="Exercise", layout="wide")
+
+# check API key validation
+require_api_key()
 
 # --- Check for selected plan ---
 pid = ensure_plan_selected()
