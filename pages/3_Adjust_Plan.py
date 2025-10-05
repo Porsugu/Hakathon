@@ -1,8 +1,103 @@
 import streamlit as st
 from db_functions import get_plans_by_user, update_plan_content
 from utils import ensure_plan_selected
-import google.generativeai as genai
+from config import get_ai_manager
 import json
+
+st.markdown("""
+    <style>
+        /* Keep expanded expander header and content dark */
+        details[open] > summary {
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+        details[open] {
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+            
+        /* General dark background and text */
+        .stApp {
+            background-color: #0e1117;
+            color: #f5f5f5;
+        }
+        h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #f5f5f5 !important;
+        }
+
+        /* Top bar */
+        header[data-testid="stHeader"] {
+            background-color: #0e1117 !important;
+            color: #f5f5f5 !important;
+            box-shadow: none !important;
+        }
+        header[data-testid="stHeader"] .css-1v0mbdj {
+            color: #f5f5f5 !important;
+        }
+
+        /* Sidebar */
+        section[data-testid="stSidebar"] {
+            background-color: #1a1d23 !important;
+            color: #f5f5f5 !important;
+        }
+        section[data-testid="stSidebar"] .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+        section[data-testid="stSidebar"] .stAlert p {
+            color: #f5f5f5 !important;
+        }
+
+        /* Buttons */
+        div.stButton > button {
+            background-color: #0078ff;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            padding: 0.6em 1em;
+            font-weight: 600;
+            transition: 0.2s ease-in-out;
+        }
+        div.stButton > button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        /* Info / Error / Success Boxes */
+        .stAlert {
+            border: none !important;
+            background-color: transparent !important;
+            color: #f5f5f5 !important;
+            box-shadow: none !important;
+        }
+
+        /* Expanders (Days) */
+        details {
+            background-color: #1a1d23 !important;
+            border: 1px solid #2e3440 !important;
+            border-radius: 8px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Progress bars */
+        [data-testid="stProgress"] > div > div {
+            background-color: #0078ff !important;
+        }
+
+        /* Chat input box */
+        div[data-testid="stChatInput"] textarea {
+            color: #f5f5f5 !important;
+        }
+
+        /* Chat messages */
+        div[data-testid="stChatMessage"] {
+            background-color: #1a1d23 !important;
+            border-radius: 12px !important;
+            padding: 1em !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 st.markdown("""
     <style>
@@ -103,14 +198,13 @@ st.set_page_config(page_title="Adjust Plan", layout="wide")
 
 # --- Check for selected plan ---
 pid = ensure_plan_selected()
+pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
-# --- AI Configuration (using hardcoded key as in other files) ---
-try:
-    genai.configure(api_key="AIzaSyDJpS-vOpOQXdsWQG5iKunReCHqG4OZdOg")
-    model = genai.GenerativeModel('gemini-2.5-flash')
-except Exception as e:
-    st.error(f"AI Model could not be configured: {e}")
+# --- AI Configuration ---
+ai_manager = get_ai_manager()
+if not ai_manager.initialize():
+    st.error("AI could not be initialized. Check your secrets or environment variables.")
     st.stop()
 
 # --- Function to fetch the current plan ---W
@@ -177,16 +271,22 @@ with col2:
                 The JSON structure for each day must contain 'day', 'topic', 'details', and 'status' keys.
                 """
                 
-                response = model.generate_content(full_prompt)
-                cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
-
-                try:
-                    # Validate and update the database
-                    json.loads(cleaned_response) # Check if it's valid JSON
-                    update_plan_content(pid, cleaned_response)
-                    st.success("Plan updated successfully! The new plan is shown on the left.")
-                    st.rerun() # Rerun the script to show the updated plan
-                except (json.JSONDecodeError, Exception) as e:
-                    error_message = f"Sorry, I couldn't update the plan. The AI returned an invalid format. Please try a different request. Error: {e}"
+                response_text = ai_manager.generate_content(full_prompt)
+                # new
+                if not response_text:
+                    error_message = "Sorry, I couldn't get a response from the AI. Please try again."
                     st.error(error_message)
                     st.session_state.messages.append({"role": "assistant", "content": error_message})
+                else:
+                    cleaned_response = response_text.strip().replace("```json", "").replace("```", "")
+
+                    try:
+                        # Validate and update the database
+                        json.loads(cleaned_response) # Check if it's valid JSON
+                        update_plan_content(pid, cleaned_response)
+                        st.success("Plan updated successfully! The new plan is shown on the left.")
+                        st.rerun() # Rerun the script to show the updated plan
+                    except (json.JSONDecodeError, Exception) as e:
+                        error_message = f"Sorry, I couldn't update the plan. The AI returned an invalid format. Please try a different request. Error: {e}"
+                        st.error(error_message)
+                        st.session_state.messages.append({"role": "assistant", "content": error_message})

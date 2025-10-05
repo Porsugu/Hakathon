@@ -3,7 +3,6 @@ import sqlite3
 
 DATABASE_FILE = 'learning_os.db'
 
-
 def get_db_connection():
     """
     Establish and return a database connection.
