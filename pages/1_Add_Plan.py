@@ -1,8 +1,6 @@
 import streamlit as st
 from db_functions import add_plan
-import google.generativeai as genai
 import json
-import os
 from config import config
 from config import get_ai_manager
 

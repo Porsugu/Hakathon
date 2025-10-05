@@ -72,14 +72,15 @@ def update_plan_content(pid, new_daily_content_json):
         conn.commit()
 
 
-def delete_plan(pid):
+def delete_plan(uid, pid):
     """
-    Delete a learning plan.
+    Delete a learning plan and all associated knowledge items for a specific user.
     """
-    sql = "DELETE FROM plans WHERE pid = ?"
+    delete_plan_sql = "DELETE FROM plans WHERE pid = ? AND uid = ?"
+    delete_knowledge_sql = "DELETE FROM knowledge_items WHERE pid = ? AND uid = ?"
     with get_db_connection() as conn:
-        # Suggestion: Also delete knowledge items related to this plan, or set their pid to NULL
-        conn.execute(sql, (pid,))
+        conn.execute(delete_plan_sql, (pid, uid))
+        conn.execute(delete_knowledge_sql, (pid, uid))
         conn.commit()
 
 

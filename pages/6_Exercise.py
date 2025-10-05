@@ -1,5 +1,6 @@
 import streamlit as st
 from db_functions import get_knowledge_items_by_plan, get_plans_by_user
+from utils import ensure_plan_selected
 import google.generativeai as genai
 import json
 import random
@@ -9,12 +10,7 @@ from config import get_ai_manager
 st.set_page_config(page_title="Exercise", layout="wide")
 
 # --- Check for selected plan ---
-if 'current_plan_id' not in st.session_state:
-    st.error("No plan selected. Please go back to the homepage and select a plan.")
-    st.page_link("main.py", label="Go to Homepage", icon="🏠")
-    st.stop()
-
-pid = st.session_state['current_plan_id']
+pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
 # --- AI Configuration ---

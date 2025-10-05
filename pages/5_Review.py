@@ -1,15 +1,11 @@
 import streamlit as st
-from db_functions import get_knowledge_items_by_plan, get_plans_by_user
+from db_functions import get_knowledge_items_by_plan, get_plans_by_user, delete_knowledge_item
+from utils import ensure_plan_selected
 
 st.set_page_config(page_title="Review Flashcards", layout="centered")
 
 # --- Check for selected plan ---
-if 'current_plan_id' not in st.session_state:
-    st.error("No plan selected. Please go back to the homepage and select a plan.")
-    st.page_link("main.py", label="Go to Homepage", icon="🏠")
-    st.stop()
-
-pid = st.session_state['current_plan_id']
+pid = ensure_plan_selected()
 uid = st.session_state.get('user_id', 1)
 
 # --- Fetch Data ---
@@ -55,7 +51,7 @@ with st.container(height=350, border=True):
         st.markdown(current_item['definition'])
 
 # --- Control Buttons ---
-col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2, col3, col4 = st.columns([1, 2, 1, 1])
 
 with col1:
     if st.button("⬅️ Previous", use_container_width=True, disabled=current_index <= 0):
@@ -72,6 +68,14 @@ with col3:
     if st.button("Next ➡️", use_container_width=True, disabled=current_index >= total_cards - 1):
         st.session_state.review_index += 1
         st.session_state.card_flipped = False # Reset flip state
+        st.rerun()
+
+with col4:
+    if st.button("🗑️ Delete", use_container_width=True):
+        delete_knowledge_item(current_item['item_id'])
+        st.toast(f"Deleted '{current_item['term']}'")
+        # After deleting, we don't increment the index, as the list will shorten
+        # and the next item will shift into the current index.
         st.rerun()
 
 st.divider()
