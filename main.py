@@ -46,6 +46,11 @@ st.markdown("""
         [data-testid="stProgress"] > div > div {
             background-color: #0078ff !important;
         }
+            
+        /* Remove background from progress bar label */
+        [data-testid="stProgress"] [data-testid="stMarkdownContainer"] {
+            background: transparent !important;
+        }
 
         /* Containers */
         div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] {
