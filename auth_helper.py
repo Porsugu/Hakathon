@@ -10,7 +10,7 @@ def require_api_key():
     if not st.session_state.get('api_key_validated', False):
         st.error("🔒 Please validate your API key first.")
         if st.button("Go to Login"):
-            st.switch_page("login.py")
+            st.switch_page("main.py")
         st.stop()
 
 def get_validated_api_key():
@@ -29,4 +29,4 @@ def logout():
     st.session_state['api_key_validated'] = False
     if 'gemini_api_key' in st.session_state:
         del st.session_state['gemini_api_key']
-    st.switch_page("login.py")
+    st.switch_page("main.py")

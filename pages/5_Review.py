@@ -1,16 +1,28 @@
 import streamlit as st
 from db_functions import get_knowledge_items_by_plan, get_plans_by_user, delete_knowledge_item
 from utils import ensure_plan_selected
+import re
 
 st.markdown("""
     <style>
         /* General background and text */
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stVerticalBlock"], .stApp {
+            background-color: #0e1117 !important;
+            color: #f5f5f5 !important;
+        }
+
         .stApp {
-            background-color: #0e1117;
-            color: #f5f5f5;
+            background-color: #0e1117 !important;
+            color: #f5f5f5 !important;
         }
         h1, h2, h3, h4, h5, h6, p, span, div {
             color: #f5f5f5 !important;
+        }
+        
+        /* Make text inputs and text areas match */
+        textarea, input, .stTextInput input, .stTextArea textarea {
+            background-color: #1e1e1e !important;
+            color: #ffffff !important;
         }
 
         /* Sidebar styling */
@@ -100,10 +112,18 @@ st.markdown("""
         }
 
         /* Style for copyable code/latex blocks */
-        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
-            background-color: #262730; /* A medium-dark grey */
+        div[data-testid="stCodeBlock"] > div, div[data-testid="stLatex"] > div, pre {
+            background-color: #262730 !important; /* A medium-dark grey */
             border-radius: 8px;
             padding: 1em;
+            color: #f5f5f5 !important;
+        }
+
+        /* Style for toast notifications */
+        div[data-testid="stToast"] {
+            background-color: #262730;
+            border: 1px solid #4b5563;
+            color: #f5f5f5;
         }
         
     </style>
@@ -162,7 +182,21 @@ with st.container(height=350, border=True):
     st.divider()
     # Display the back of the card (the definition) if flipped
     if st.session_state.card_flipped:
-        st.markdown(current_item['definition'])
+        # Check the type of item to render it correctly
+        if current_item['item_type'] == 'equation':
+            # For equations, parse the definition to separate the LaTeX and explanation
+            definition_text = current_item['definition']
+            # Use regex to find the latex block and the explanation
+            match = re.search(r"```latex\n(.*?)\n```\n\n\*\*Explanation:\*\*\n(.*)", definition_text, re.DOTALL)
+            if match:
+                equation = match.group(1)
+                explanation = match.group(2)
+                st.latex(equation)
+                st.markdown(explanation)
+            else:
+                st.markdown(definition_text) # Fallback
+        else:
+            st.markdown(current_item['definition'])
 
 # --- Control Buttons ---
 col1, col2, col3, col4 = st.columns([1, 2, 1, 1])

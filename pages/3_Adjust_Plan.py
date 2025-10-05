@@ -194,10 +194,18 @@ st.markdown("""
         }
 
         /* Style for copyable code/latex blocks */
-        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
-            background-color: #262730; /* A medium-dark grey */
+        div[data-testid="stCodeBlock"] > div, div[data-testid="stLatex"] > div, pre {
+            background-color: #262730 !important; /* A medium-dark grey */
             border-radius: 8px;
             padding: 1em;
+            color: #f5f5f5 !important;
+        }
+
+        /* Style for toast notifications */
+        div[data-testid="stToast"] {
+            background-color: #262730;
+            border: 1px solid #4b5563;
+            color: #f5f5f5;
         }
     </style>
 """, unsafe_allow_html=True)

@@ -103,10 +103,18 @@ st.markdown("""
         }
 
         /* Style for copyable code/latex blocks */
-        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
-            background-color: #262730; /* A medium-dark grey */
+        div[data-testid="stCodeBlock"] > div, div[data-testid="stLatex"] > div, pre {
+            background-color: #262730 !important; /* A medium-dark grey */
             border-radius: 8px;
             padding: 1em;
+            color: #f5f5f5 !important;
+        }
+
+        /* Style for toast notifications */
+        div[data-testid="stToast"] {
+            background-color: #262730;
+            border: 1px solid #4b5563;
+            color: #f5f5f5;
         }
         
     </style>
@@ -150,8 +158,28 @@ if not knowledge_items:
     st.stop()
 
 # --- Function to generate exercises ---
+def format_knowledge_for_ai(items):
+    """Formats knowledge items into a readable string for the AI context."""
+    import re
+    formatted_items = []
+    for item in items:
+        term = item['term']
+        definition = item['definition']
+        item_type = item['item_type']
+
+        # Simplify complex definitions for the AI context
+        if item_type == 'equation':
+            match = re.search(r"```latex\n(.*?)\n```\n\n\*\*Explanation:\*\*\n(.*)", definition, re.DOTALL)
+            if match:
+                definition = f"Equation: {match.group(1).strip()}. Explanation: {match.group(2).strip()}"
+        elif item_type == 'code':
+             definition = re.sub(r"```.*?\n", "", definition).replace("```", "") # Strip code fences
+
+        formatted_items.append(f"- {term}: {definition}")
+    return "\n".join(formatted_items)
+
 def generate_exercises(items):
-    context = "\n".join([f"- {item['term']}: {item['definition']}" for item in items])
+    context = format_knowledge_for_ai(items)
     
     special_instructions = current_plan['special_instructions'] if current_plan and 'special_instructions' in current_plan.keys() else None
     instruction_prompt_part = ""

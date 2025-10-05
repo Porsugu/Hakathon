@@ -78,10 +78,18 @@ st.markdown("""
         }
 
         /* Style for copyable code/latex blocks */
-        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
-            background-color: #262730; /* A medium-dark grey */
+        div[data-testid="stCodeBlock"] > div, div[data-testid="stLatex"] > div, pre {
+            background-color: #262730 !important; /* A medium-dark grey */
             border-radius: 8px;
             padding: 1em;
+            color: #f5f5f5 !important;
+        }
+
+        /* Style for toast notifications */
+        div[data-testid="stToast"] {
+            background-color: #262730;
+            border: 1px solid #4b5563;
+            color: #f5f5f5;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -225,18 +233,18 @@ with col1:
                 The value of "learning_material" must be an array of content blocks. Each block is an object with a "type" and "content".
                 
                 Here are the available types and their "content" structure:
-                1. "type": "paragraph"
-                   "content": "A string of explanatory text. Use markdown for formatting."
-                2. "type": "key_concept"
-                   "content": {{"term": "The specific term or concept", "definition": "A precise, clear definition.", "example": "A short, practical example."}}
-                3. "type": "theorem"
-                   "content": {{"name": "Name of the Theorem/Rule", "statement": "The full statement.", "example": "A clear, practical example."}}
-                4. "type": "latex_equation"
-                   "content": {{"title": "Name of the equation", "equation": "a^2 + b^2 = c^2", "explanation": "A brief explanation of what the equation represents."}}
-                5. "type": "table"
-                   "content": {{"title": "Title for the table", "headers": ["Header1", "Header2"], "rows": [["r1c1", "r1c2"], ["r2c1", "r2c2"]]}}. The 'headers' array MUST contain unique strings.
-                6. "type": "code_example"
-                   "content": {{"title": "Purpose of the code snippet", "language": "e.g., python", "code": "Your code here.", "explanation": "A brief explanation of what the code does."}}
+                - "type": "paragraph": "content" is a string of explanatory text. Use markdown for formatting. IMPORTANT: Any inline LaTeX math notation must be wrapped in single dollar signs, like `$\\pi$`.
+                - "type": "key_concept": "content" is {{"term": "The specific term or concept", "definition": "A precise, clear definition.", "example": "A short, practical example."}}.
+                - "type": "theorem": "content" is {{"name": "Name of the Theorem/Rule", "statement": "The full statement.", "example": "A clear, practical example."}}.
+                - "type": "latex_equation": "content" is {{"title": "Name of the equation", "equation": "a^2 + b^2 = c^2", "explanation": "A brief explanation of what the equation represents."}}.
+                - "type": "table": "content" is {{"title": "Title for the table", "headers": ["Header1", "Header2"], "rows": [["r1c1", "r1c2"], ["r2c1", "r2c2"]]}}. The 'headers' array MUST contain unique strings.
+                - "type": "code_example": "content" is {{"title": "Purpose of the code snippet", "language": "e.g., python", "code": "Your code here.", "explanation": "A brief explanation of what the code does."}}.
+                
+                **If the topic is about learning a language, use these special types for vocabulary and grammar:**
+                - "type": "vocabulary_card": "content" is {{"word": "The vocabulary word", "part_of_speech": "e.g., Noun, Verb", "meaning": "The definition of the word.", "example": "An example sentence using the word."}}.
+                - "type": "grammar_card": "content" is {{"grammar_point": "The name of the grammar rule", "rule_of_use": "When and how to use the rule.", "meaning": "What the grammar conveys.", "example": "An example sentence demonstrating the rule."}}.
+                
+                For general topics, use "key_concept". For language topics, use "vocabulary_card" and "grammar_card" instead of "key_concept" for words and grammar rules.
                 
                 Generate a sequence of these blocks to create a complete and easy-to-understand lesson. Use the "key_concept" type for all fundamental definitions.
                 Do not avoid defining a term as a "key_concept" just because it is also part of a table or another block type. If a term is important for a beginner to know, it must have its own "key_concept" definition.
@@ -281,7 +289,7 @@ with col1:
                         st.markdown(f"**Example:** {content.get('example')}")
                     if st.button("Save to Knowledge Base", key=f"save_concept_{i}"):
                         full_definition = f"{content.get('definition')}\n\n**Example:** {content.get('example')}"
-                        add_knowledge_item(uid, pid, 'concept', content.get("term"), full_definition)
+                        add_knowledge_item(uid, pid, 'concept', content.get("term"), content.get("definition", ""))
                         st.toast(f"✅ Saved '{content.get('term')}'!")
 
             elif block_type == "theorem" and isinstance(content, dict):
@@ -295,18 +303,44 @@ with col1:
                         add_knowledge_item(uid, pid, 'theorem', content.get("name"), full_definition)
                         st.toast(f"✅ Saved '{content.get('name')}'!")
 
-            elif block_type == "latex_equation":
+            elif block_type == "vocabulary_card" and isinstance(content, dict):
+                with st.container(border=True):
+                    st.subheader(content.get("word", "Vocabulary"))
+                    st.markdown(f"**Part of speech:** {content.get('part_of_speech', 'N/A')}")
+                    st.markdown(f"**Meaning:** {content.get('meaning', 'N/A')}")
+                    if content.get("example"):
+                        st.markdown(f"**Example:** {content.get('example')}")
+                    if st.button("Save to Knowledge Base", key=f"save_vocab_{i}"):
+                        full_definition = f"**Part of speech:** {content.get('part_of_speech', 'N/A')}\n\n**Meaning:** {content.get('meaning', 'N/A')}\n\n**Example:** {content.get('example', 'N/A')}"
+                        add_knowledge_item(uid, pid, 'vocabulary', content.get("word"), full_definition)
+                        st.toast(f"✅ Saved '{content.get('word')}'!")
+
+            elif block_type == "grammar_card" and isinstance(content, dict):
+                with st.container(border=True):
+                    st.subheader(content.get("grammar_point", "Grammar Rule"))
+                    st.markdown(f"**Rule of use:** {content.get('rule_of_use', 'N/A')}")
+                    st.markdown(f"**Meaning:** {content.get('meaning', 'N/A')}")
+                    if content.get("example"):
+                        st.markdown(f"**Example:** {content.get('example')}")
+                    if st.button("Save to Knowledge Base", key=f"save_grammar_{i}"):
+                        full_definition = f"**Rule of use:** {content.get('rule_of_use', 'N/A')}\n\n**Meaning:** {content.get('meaning', 'N/A')}\n\n**Example:** {content.get('example', 'N/A')}"
+                        add_knowledge_item(uid, pid, 'grammar', content.get("grammar_point"), full_definition)
+                        st.toast(f"✅ Saved '{content.get('grammar_point')}'!")
+
+            elif block_type == "latex_equation" and isinstance(content, dict):
                 with st.container(border=True):
                     equation_title = content.get("title", "Equation")
                     st.subheader(equation_title)
                     st.latex(content.get("equation", ""))
                     if content.get("explanation"):
+                        # Use latex for explanation if it might contain math symbols
                         st.markdown(content.get("explanation", ""))
                     if st.button("Save to Knowledge Base", key=f"save_equation_{i}"):
                         # Format the equation and explanation for saving
-                        full_definition = f"```latex\n{content.get('equation', '')}\n```\n\n**Explanation:**\n{content.get('explanation', 'No explanation provided.')}"
+                        full_definition = f"```latex\n{content.get('equation', '')}\n```\n\n**Explanation:**\n{content.get('explanation', '')}"
                         add_knowledge_item(uid, pid, 'equation', equation_title, full_definition)
                         st.toast(f"✅ Saved '{equation_title}'!")
+            
 
             elif block_type == "table" and isinstance(content, dict):
                 import pandas as pd

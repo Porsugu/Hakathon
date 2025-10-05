@@ -2,6 +2,7 @@ import streamlit as st
 from db_functions import get_knowledge_items_by_plan, get_plans_by_user, add_knowledge_item
 from utils import ensure_plan_selected
 from config import get_ai_manager
+import re
 import json
 from auth_helper import require_api_key
 
@@ -103,10 +104,18 @@ st.markdown("""
         }
 
         /* Style for copyable code/latex blocks */
-        [data-testid="stCodeBlock"], [data-testid="stLatex"] {
-            background-color: #262730; /* A medium-dark grey */
+        div[data-testid="stCodeBlock"] > div, div[data-testid="stLatex"] > div, pre {
+            background-color: #262730 !important; /* A medium-dark grey */
             border-radius: 8px;
             padding: 1em;
+            color: #f5f5f5 !important;
+        }
+
+        /* Style for toast notifications */
+        div[data-testid="stToast"] {
+            background-color: #262730;
+            border: 1px solid #4b5563;
+            color: #f5f5f5;
         }
         
     </style>
@@ -165,15 +174,42 @@ with col1:
         if st.session_state.blackboard_item:
             item = st.session_state.blackboard_item
             st.subheader(item['term'])
-            st.write(item['definition'])
-            if item.get('example'):
-                st.code(item['example'], language='python')
+            
+            # Use the same rendering logic as the Review page
+            item_type = item.get('item_type', 'concept') # Default to concept
+            definition_text = item['definition']
+
+            if item_type == 'equation':
+                match = re.search(r"```latex\n(.*?)\n```\n\n\*\*Explanation:\*\*\n(.*)", definition_text, re.DOTALL)
+                if match:
+                    st.latex(match.group(1))
+                    st.markdown(match.group(2))
+                else:
+                    st.markdown(definition_text) # Fallback
+            elif item_type == 'code':
+                match = re.search(r"```.*?\n(.*?)```\n\n\*\*Explanation:\*\*\n(.*)", definition_text, re.DOTALL)
+                if match:
+                    st.code(match.group(1))
+                    st.markdown(match.group(2))
+                else:
+                    st.markdown(definition_text) # Fallback
+            elif item_type == 'vocabulary':
+                # The definition is already a formatted markdown string
+                st.markdown(definition_text)
+            elif item_type == 'grammar':
+                # The definition is already a formatted markdown string
+                st.markdown(definition_text)
+            elif item_type == 'table':
+                # The definition is a markdown table string
+                st.markdown(definition_text)
+            elif item_type in ['concept', 'theorem']:
+                # These are also markdown strings
+                st.markdown(definition_text)
             
             if st.button("Add to Knowledge Base", use_container_width=True):
-                full_definition = item['definition']
-                if item.get('example'):
-                    full_definition += f"\n\n**Example:**\n```\n{item['example']}\n```"
-                add_knowledge_item(uid, pid, 'concept', item['term'], full_definition)
+                # The definition is already formatted correctly when placed on the blackboard
+                # The 'item_type' is also preserved
+                add_knowledge_item(uid, pid, item_type, item['term'], definition_text)
                 st.toast(f"✅ Saved '{item['term']}'!")
                 st.session_state.blackboard_item = None # Clear after saving
         else:
@@ -196,8 +232,23 @@ with col2:
 
         with st.chat_message("assistant"):
             with st.spinner("🤖 Thinking..."):
+                def format_knowledge_for_ai(items):
+                    """Formats knowledge items into a readable string for the AI context."""
+                    formatted_items = []
+                    for item in items:
+                        term = item['term']
+                        definition = item['definition']
+                        item_type = item['item_type']
+                        if item_type == 'equation':
+                            match = re.search(r"```latex\n(.*?)\n```\n\n\*\*Explanation:\*\*\n(.*)", definition, re.DOTALL)
+                            if match:
+                                definition = f"Equation: {match.group(1).strip()}. Explanation: {match.group(2).strip()}"
+                        elif item_type == 'code':
+                            definition = re.sub(r"```.*?\n", "", definition).replace("```", "")
+                        formatted_items.append(f"- {term}: {definition}")
+                    return "\n".join(formatted_items)
                 # Build context from saved knowledge
-                knowledge_context = "\n".join([f"- {item['term']}: {item['definition']}" for item in knowledge_items])
+                knowledge_context = format_knowledge_for_ai(knowledge_items)
                 
                 special_instructions = current_plan['special_instructions'] if current_plan and 'special_instructions' in current_plan.keys() else None
                 instruction_prompt_part = ""
@@ -216,11 +267,25 @@ with col2:
                 First, decide if the question is related to '{plan_name}'.
                 - If it is NOT related, respond with a conversational message explaining you can only answer questions about the topic.
 
-                - If it IS related, decide if the answer is a distinct, important "knowledge point" (like a vocabulary word, a function, a grammar rule, a specific formula).
-                    - If it IS a knowledge point, you MUST respond with ONLY a single JSON object with this structure:
-                      `{{"is_knowledge_point": true, "data": {{"term": "...", "definition": "...", "example": "..."}}}}`
-                
-                - If the question is related but requires a general explanation or a conversational answer (not a dictionary-style entry), you MUST respond with ONLY a single JSON object with this structure:
+                - If it IS related, decide if the answer is a distinct, important "knowledge point".
+                    - If it IS a knowledge point, you MUST respond with ONLY a single JSON object with `{{"is_knowledge_point": true, "data": ...}}`.
+                    - The "data" object MUST contain a "term", "definition", and "item_type".
+                    
+                    - Use "item_type": "vocabulary" for a single word. The "term" is the word, and the "definition" MUST be a markdown string formatted like this:
+                      `**Part of speech:** ...\\n\\n**Meaning:** ...\\n\\n**Example:** ...`
+                      
+                    - Use "item_type": "grammar" for a grammar rule. The "term" is the rule name, and the "definition" MUST be a markdown string formatted like this:
+                      `**Rule of use:** ...\\n\\n**Meaning:** ...\\n\\n**Example:** ...`
+
+                    - Use "item_type": "equation" for formulas. The "term" is the equation name, and the "definition" MUST be a markdown string formatted like this:
+                      `"```latex\\n[LATEX_HERE]\\n```\\n\\n**Explanation:**\\n[EXPLANATION_HERE]"`
+
+                    - Use "item_type": "code" for code snippets. The "term" is the snippet title, and the "definition" MUST be a markdown string formatted like this:
+                      `"```[LANG]\\n[CODE_HERE]\\n```\\n\\n**Explanation:**\\n[EXPLANATION_HERE]"`
+
+                    - For any other general concept, use "item_type": "concept". The "definition" is a simple markdown string.
+
+                - If the question requires a general explanation (not a dictionary-style entry), you MUST respond with ONLY a single JSON object with this structure:
                   `{{"is_knowledge_point": false, "data": {{"answer": "Your conversational answer here."}}}}`
 
                 {instruction_prompt_part}
@@ -231,7 +296,12 @@ with col2:
                 ---
                 """
 
-                response = ai_manager.generate_content(full_prompt, show_spinner=True, spinner_text="🤖 Thinking...")
+                # Use centralized AI manager from config
+                # Disable the ai_manager's internal spinner because we already show
+                # a Streamlit spinner above. This prevents the "Thinking" indicator
+                # from appearing twice.
+                response = ai_manager.generate_content(full_prompt, show_spinner=False)
+                # ai_manager returns the text directly
                 answer_text = response
 
                 try:
@@ -242,7 +312,7 @@ with col2:
                     is_knowledge = ai_response_data.get("is_knowledge_point", False)
                     data = ai_response_data.get("data", {})
 
-                    if is_knowledge:
+                    if is_knowledge and "term" in data and "definition" in data and "item_type" in data:
                         # It's a knowledge point, display on blackboard
                         st.session_state.blackboard_item = data
                         # Add a message to the chat to direct the user
