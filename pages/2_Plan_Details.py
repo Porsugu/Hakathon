@@ -34,7 +34,7 @@ st.caption("Select an option below to manage your learning plan.")
 st.divider()
 
 # --- Display the four action cards ---
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     if card("Adjust Plan", "🛠️"):
@@ -46,8 +46,12 @@ with col2:
 
 with col3:
     if card("Review", "🧠"):
-        st.info("This feature is coming soon!")
+        st.switch_page("pages/5_Review.py")
 
 with col4:
+    if card("Exercise", "✍️"):
+        st.switch_page("pages/6_Exercise.py")
+
+with col5:
     if card("Ask Something", "❓"):
         st.info("This feature is coming soon!")
