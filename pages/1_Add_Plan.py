@@ -1,8 +1,8 @@
 import streamlit as st
 from db_functions import add_plan
 import json
-from config import config
 from config import get_ai_manager
+from auth_helper import require_api_key
 
 st.markdown("""
     <style>
@@ -110,6 +110,9 @@ st.markdown("""
 
 # Set up the page
 st.set_page_config(page_title="Add Learning Plan", layout="wide")
+
+# check API key validation
+require_api_key()
 
 # --- AI Manager ---
 ai_manager = get_ai_manager()
