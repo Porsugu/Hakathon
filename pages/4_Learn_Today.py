@@ -72,7 +72,10 @@ st.caption(f"Part of your plan: **{plan_data['plan_name']}**")
 st.divider()
 
 # --- Day Navigation ---
-is_generating = st.session_state.get('is_generating', False)
+# Determine if we need to generate content *before* rendering the buttons.
+# This ensures they are disabled on the initial load.
+is_generating = current_day_task['day'] not in st.session_state.learning_materials_cache[pid]
+
 nav_cols = st.columns([1, 1, 1])
 with nav_cols[0]:
     if st.button("⬅️ Previous Day", use_container_width=True, disabled=(current_day_index <= 0 or is_generating)):
@@ -106,7 +109,6 @@ with col1:
         if current_day_task['day'] in st.session_state.learning_materials_cache[pid]:
             learning_material = st.session_state.learning_materials_cache[pid][current_day_task['day']]
         else:
-            st.session_state.is_generating = True
             with st.spinner("🤖 Breaking down today's topic into key concepts..."):
                 prompt = f"""
                 Please act as a helpful tutor. Your task is to break down a learning topic into key, saveable knowledge points.
@@ -141,9 +143,8 @@ with col1:
                 learning_material = json.loads(cleaned_response)
                 # Save to cache
                 st.session_state.learning_materials_cache[pid][current_day_task['day']] = learning_material
-            # The script will now continue and render the newly generated content
-            # in the same run, avoiding a rerun.
-            st.session_state.is_generating = False
+                # Force a rerun to re-evaluate the 'is_generating' flag and enable the buttons.
+                st.rerun()
 
         for i, item in enumerate(learning_material.get("knowledge_points", [])):
             with st.container(border=True):
