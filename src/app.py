@@ -4,6 +4,8 @@ import base64
 import hashlib
 import secrets
 import streamlit as st
+import streamlit.components.v1 as components
+import platform, subprocess, webbrowser
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
 import requests
 
@@ -34,8 +36,9 @@ def create_pkce_pair():
 # ====== 畫面樣式 ======
 st.markdown("""
 <style>
-.title { text-align:center; font-size:72px; font-weight:800; line-height:1.1; }
-.subtitle { text-align:center; font-size:22px; color:#555; margin-bottom:28px; }
+.title { text-align:center; font-size:90px; font-weight:800; line-height:1.1; }
+.subtitle_1 { text-align:center; font-size:22px; margin-bottom:28px; }
+.subtitle_2 { text-align:center; font-size:22px; color:#555; margin-bottom:28px; }
 .card { max-width:640px; margin:0 auto; padding:24px 28px; border:1px solid #eee; border-radius:18px; box-shadow: 0 6px 24px rgba(0,0,0,.06); background:#fff; }
 .btn { display:block; width:100%; padding:14px 18px; border-radius:12px; border:none; font-size:18px; font-weight:600; cursor:pointer; }
 .google { background:#fff; border:1px solid #ddd; }
@@ -43,8 +46,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="title">👋 Welcome</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Sign in to continue</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">AI Tutor</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle_1">A tutor who is better than your college one.</div>', unsafe_allow_html=True)
+st.divider()
+st.markdown('<div class="subtitle_2">Sign up or log in</div>', unsafe_allow_html=True)
 
 # ====== Session 初始化 ======
 if "user" not in st.session_state:
@@ -92,15 +97,72 @@ if code and state and st.session_state.oauth_state == state and st.session_state
                 "sub": info.get("sub"),
             }
             clear_query_params()
+            # 成功登入後切換視圖（單頁應用示例）
+            st.session_state.post_login_view = "dashboard"
+            st.rerun()
+
+            # ====== 登入成功後自動切換視圖（單頁用 query param 控制） ======
+            if st.session_state.get("post_login_view"):
+                view = st.session_state.pop("post_login_view")
+                st.query_params["view"] = view
+                st.markdown("<script>window.location.reload();</script>", unsafe_allow_html=True)
+                st.stop()
+
+            # 視圖切換（例）
+            view = st.query_params.get("view", "welcome")
+
+
         else:
-            st.error("讀取使用者資料失敗")
+            st.error("Fail to read the user info, please try again。")
     else:
-        st.error("Token 交換失敗，請重試。")
+        st.error("Fail to exchange the tokin, please try again。")
+if st.session_state.get("pending_auth_url"):
+    auth_url = st.session_state.pop("pending_auth_url")  # 取完就清除
+
+    st.markdown(f"""
+        <script>
+        (function () {{
+            var u = "{auth_url}";
+            try {{
+                if (window !== window.top) {{
+                    // 若被嵌在 iframe，改導到最外層視窗
+                    window.top.location.assign(u);
+                }} else {{
+                    window.location.assign(u);
+                }}
+            }} catch (e) {{
+                window.location.href = u;
+            }}
+        }})();
+        </script>
+        <noscript><meta http-equiv="refresh" content="0; url={auth_url}"></noscript>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+
+def os_open(url: str) -> bool:
+    try:
+        os_name = platform.system()
+        if os_name == "Windows":
+            # Safest: let Windows shell handle the URL directly
+            os.startfile(url)  # type: ignore[attr-defined]
+            return True
+        elif os_name == "Darwin":
+            subprocess.run(["open", url], check=False)
+            return True
+        else:  # Linux
+            subprocess.run(["xdg-open", url], check=False)
+            return True
+    except Exception:
+        pass
+    try:
+        return webbrowser.open(url, new=1, autoraise=True)
+    except Exception:
+        return False
+
 
 # ====== 未登入：顯示 Google 登入按鈕 ======
 if not st.session_state.user:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
     if st.button("🔐 Sign in with Google", use_container_width=True):
         code_verifier, code_challenge = create_pkce_pair()
         st.session_state.code_verifier = code_verifier
@@ -115,13 +177,20 @@ if not st.session_state.user:
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
             "access_type": "online",
-            "prompt": "consent",  # 開發中可強制顯示授權畫面
+            "prompt": "consent",
         }
         auth_url = f"{AUTH_ENDPOINT}?{urlencode(auth_params)}"
-        st.markdown(f"[前往 Google 登入]({auth_url})")
-        st.info("若沒有自動跳轉，請點上方連結完成登入。")
+
+        # ✅ 本機自動開啟預設瀏覽器（不依賴前端腳本/iframe）
+        ok = os_open(auth_url)
+        if not ok:
+            # 最後備援：提供可點擊的連結
+            st.link_button("Continue to Google →", auth_url, use_container_width=True)
+
+        st.stop()
 
     st.markdown('</div>', unsafe_allow_html=True)
+    # 可保留一條備援連結（若 JS 被阻擋時使用）
 
 # ====== 已登入：顯示使用者資訊與登出 ======
 else:
@@ -134,9 +203,9 @@ else:
         with col2:
             st.markdown(f"### 👤 {st.session_state.user.get('name','User')}")
             st.markdown(f"- **Email**: {st.session_state.user.get('email')}")
-            st.success("已登入！你可以在這裡顯示主功能。")
+            st.success("Log in Success! MAMAMIA!")
 
-        if st.button("登出", use_container_width=True):
+        if st.button("Log in", use_container_width=True):
             st.session_state.user = None
             st.session_state.oauth_state = None
             st.session_state.code_verifier = None
